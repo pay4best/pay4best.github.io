@@ -1,0 +1,356 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="icon" href="/assets/favicon.png" />
+<script src="/assets/qrious.min.js" type="application/javascript"></script>
+<script src="/assets/detect-provider.min.js"></script>
+<title>pay4.best wallet</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+<script type="module">
+    import utils from "./utils/index.esm.js";
+    window.utils = utils;
+    window.TxMap = new Map();
+    window.NETWORK = "bchtest"; // bitcoincash bchtest
+</script>
+<style>
+        input {
+            width: 24px;
+            height: 24px;
+        }
+
+    code {overflow-wrap: break-word;}
+
+        /* The Modal (background) */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0, 0, 0); /* Fallback color */
+            background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+        }
+
+        /* Modal Content/Box */
+        .modal-content {
+        border-radius: 8px;
+            background-color: #fefefe;
+            margin: 35% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 350px;
+        }
+
+        /* The Close Button */
+        .close {
+            color: #91cdb5;
+            float: right;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #3fc388;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+</style>
+</head>
+<body style="margin: 0 auto; width: 380px">
+<div class="section" id="withoutTxReq" style="display: none">
+    <table>
+    <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;<canvas id="legacyAddrQR"></canvas></td>
+    <td><canvas id="cashAddrQR"></canvas></td></tr>
+    <tr><td>Legacy Address&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+    <td>Cash Address</td></tr>
+    </table><br>
+    <p><b>Cash Address:</b></p>
+      <p id="cashAddr"></p>
+    <p><b>Token Address:</b></p>
+      <p id="tokenAddr"></p>
+    <p><b>Legacy Address:</b></p>
+      <p id="legacyAddr"></p>
+</div>
+
+<div id="withTxReq" class="section" style="display: none">
+    <p>Origin: <span id="origin"></span></p>
+    <button class="button" onclick="signTx()">Sign It!</button>
+</div>
+
+<div id="myModal" class="modal" style="display: none">
+    <div class="modal-content">
+        <p id="modalContent" style="text-align: center; overflow-wrap: break-word"></p>
+        <span class="close">&nbsp;&nbsp;&nbsp;&nbsp;OK</span>
+    </div>
+</div>
+
+<script>
+const WalletReqChannel = new BroadcastChannel("WALLETREQ");
+const WalletChannel = new BroadcastChannel("WALLET");
+const TxReqIDChannel = new BroadcastChannel("TXREQID");
+const TxReqChannel = new BroadcastChannel("TXREQ");
+const TxRespChannel = new BroadcastChannel("TXRESP");
+
+async function getObjectHash(obj) {
+    const jsonStr = JSON.stringify(obj, function(key, value) {
+        if(typeof value === 'bigint') {
+            return value.toString(16);
+	} else if(value && value.constructor === Uint8Array) {
+            return value.toString();
+	} else {
+            return value;
+	}
+    });
+    const encoder = new TextEncoder();
+    console.log(jsonStr, encoder.encode(jsonStr));
+    const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(jsonStr)));
+    console.log(hash.toString());
+    return Array.from(hash).map(n => n.toString(16).padStart(2, "0")).join(""); //to hex
+}
+
+function IsPC() {
+       var userAgentInfo = navigator.userAgent;
+       var Agents = new Array("Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod");
+       var flag = true;
+       for (var v = 0; v < Agents.length; v++) {
+            if (userAgentInfo.indexOf(Agents[v]) > 0) {
+                flag = false;
+                break;
+             }
+       }
+       return flag;
+}
+
+async function connect() {
+    if (typeof window.ethereum === 'undefined') {
+        if (typeof window.web3 !== 'undefined') {
+            window.ethereum = window.web3;
+        } else if (typeof window.TPJSBrigeClient !== 'undefined') {
+            window.ethereum = window.TPJSBrigeClient;
+        } else if (typeof window.imToken !== 'undefined') {
+            window.ethereum = window.imToken;
+        } else {
+            const provider = await detectEthereumProvider();
+            if (provider) {
+                window.ethereum = provider;
+            } else if(IsPC()) {
+                myAlert("Your browser has not installed a wallet extension (like MetaMask).");
+            } else {
+                myAlert("Please open this page inside a mobile wallet App.");
+            }
+        }
+    }
+    window.accounts = await window.ethereum.request({method: 'eth_requestAccounts'});
+    if (window.accounts.length == 0) {
+        myAlert(T("Cannot connect to wallet!"));
+        return false;
+    }
+    return true;
+}
+
+async function initWallet(wif) {
+    window.WIF = wif;
+    const privKeyArr = utils.wifToPrivateKey(wif);
+    const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
+    const tokenAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkhWithTokens");
+    const legacyAddr = utils.cashAddrToLegacy(cashAddr);
+    document.getElementById("cashAddr").innerText = cashAddr.substr(12);
+    document.getElementById("tokenAddr").innerText = tokenAddr.substr(12);
+    document.getElementById("legacyAddr").innerText = legacyAddr;
+    new QRious({element: document.getElementById("cashAddrQR"), value: cashAddr});
+    new QRious({element: document.getElementById("legacyAddrQR"), value: legacyAddr});
+}
+
+async function connectWallet() {
+    if(!await connect()) {return;}
+    const accounts = await window.ethereum.request({method: "eth_requestAccounts"});
+    console.log(accounts);	
+    const addr = accounts[0];
+
+    const text="=!= 💰pay4.best wallet💰 =!=\n"+addr+"\nI hereby grant this website the permission to access my 💰pay4.best wallet💰"
+    const msg = utils.textToUtf8Hex(text);
+    const signature = await ethereum.request({method: "personal_sign", params: [msg, addr]});
+    const wif = utils.hexToWif(utils.hexSecretToHexPrivkey(signature.substr(2)), window.NETWORK);
+    const privKeyArr = utils.wifToPrivateKey(wif);
+    console.log("H", utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh"));
+    await initWallet(wif);
+    WalletChannel.postMessage(wif);
+}
+
+function myAlert(text) {
+    document.getElementById("myModal").style.display = "block";
+    document.getElementById("modalContent").innerText = text;
+}
+
+async function onLoaded(e) {
+    if(window.WIF) {// if we have the wallet, init page directly
+        await initPage();
+    } else {
+        //if we have no wallet, let's ask for it
+        console.log("send-me-wif");
+        WalletReqChannel.postMessage("send-me-wif");
+        //wait for someone else to broadcast wif
+        window.setTimeout(async function() {
+            //if nobody broadcasted wif, connect to MetaMask to get it
+            if(!window.WIF) {
+                connectWallet();
+            }
+            await initPage(); //finaly we can init page with the wallet
+        }, 500);
+    }
+
+    window.ethereum?.on('accountsChanged', async (accounts) => {
+      window.location.reload()
+    });
+}
+
+async function initPage() {
+    if(window.parent != window.self) {
+        return; // I'm an iframe
+    }
+    if(IsPC()) {
+       document.body.style.zoom = 1.36;
+    }
+    const params = new URL(window.location.href).searchParams;
+    const reqID = params.get('req');
+    if(reqID) {
+        const origin = decodeURI(params.get('origin'));
+        document.getElementById("origin").innerText = origin;
+        document.getElementById("withTxReq").style.display = "block";
+
+        console.log("TxReqIDChannel.postMessage", reqID);
+        TxReqIDChannel.postMessage(reqID);
+        TxReqChannel.onmessage = async function(evt) {
+            console.log("TxReqChannel.onmessage", evt.data);
+            console.log(evt.data.ReqID, reqID, evt.data.Tx.origin, origin);
+            if(evt.data.ReqID == reqID && evt.data.Tx.origin == origin) {
+                window.Tx = Tx;
+            }
+        }
+    } else {
+        await initWithoutTxReq();
+        document.getElementById("withoutTxReq").style.display = "block";
+    }
+}
+
+async function handleMessageAsIframe(e) {
+    console.log('e.data ', e.data);
+    if(window.location.href.startsWith(e.origin)) {
+        return; //ignore self-generated messages
+    }
+    var isPay4Best = (e.data?.Pay4BestWalletReq && e.ports && e.ports.length >= 1);
+    if(!isPay4Best) {
+        return;
+    }
+    if(e.data.Pay4BestWalletReq.GetAddr) {
+        if(window.WIF) {
+            const privKeyArr = utils.wifToPrivateKey(window.WIF);
+            const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
+            e.ports[0].postMessage(cashAddr);
+        } else {
+            e.ports[0].postMessage("wallet-not-init");
+        }
+        return;
+    }
+    var tx = e.data.Pay4BestWalletReq.UnsignedTx;
+    const reqID = await getObjectHash(tx);
+    tx.origin = e.origin; // add the origin site
+    console.log("reqID", reqID, tx);
+    window.TxMap.set(reqID, tx);
+    let targetURL = location.protocol+"//"+location.host+"/?origin="+encodeURI(e.origin)+"&req="+reqID;
+    var newWindow = window.open(targetURL, '', 'width=200,height=300');
+    console.log("newWindow", newWindow);
+    e.ports[0].postMessage({reqID: reqID, ok: newWindow !== null}); //return the reqID and window.open result
+
+    TxRespChannel.onmessage = function(evt) {
+        console.log("as iframe", evt.data);
+        console.log(evt.data.ReqID, reqID, evt.data.Result.origin, tx.origin);
+        // the response matches the request
+        if(evt.data.ReqID == reqID && evt.data.Result.origin == tx.origin) {
+            window.TxMap.delete(reqID);
+            e.ports[0].postMessage(evt.data.Result); //return the signed tx
+        }
+    };
+}
+
+async function signTx() {
+    const params = new URL(window.location.href).searchParams;
+    const reqID = params.get('req');
+    const origin = decodeURI(params.get('origin'));
+
+    console.log("TxReqIDChannel.postMessage", reqID);
+    TxReqIDChannel.postMessage(reqID);
+    TxReqChannel.onmessage = async function(evt) {
+        console.log("TxReqChannel.onmessage", evt.data);
+        console.log(evt.data.ReqID, reqID, evt.data.Tx.origin, origin);
+        if(evt.data.ReqID == reqID && evt.data.Tx.origin == origin) {
+            const tx = evt.data.Tx;
+            const privKeyArr = utils.wifToPrivateKey(window.WIF);
+            var signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
+            // var signedTx = tx;
+            console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
+            TxRespChannel.postMessage({ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
+            window.close();
+        }
+    };
+}
+
+async function initWithoutTxReq() {
+    // Get the modal
+    var modal = document.getElementById("myModal");
+
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close")[0];
+
+    // When the user clicks on <span> (x), close the modal
+    span.onclick = function () {
+        modal.style.display = "none";
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function (event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+}
+
+// get broadcasted key
+WalletChannel.onmessage = async function(evt) {
+    if(window.WIF !== evt.data) { // it's a new key
+        console.log("get broadcasted wif ", window.WIF, evt.data);
+        await initWallet(evt.data);
+    }
+};
+
+// broadcast key if someone requests
+WalletReqChannel.onmessage = function(evt) {
+    console.log("get broadcasted request");
+    if(window.WIF) {
+        WalletChannel.postMessage(window.WIF);
+    }
+};
+
+// broadcast tx-signing-request if someone requests
+TxReqIDChannel.onmessage = function(evt) {
+    console.log("TxReqIDChannel.onmessage", evt.data);
+    if(window.TxMap.has(evt.data)) {
+        console.log("TxReqChannel.postMessage", window.TxMap.get(evt.data));
+        TxReqChannel.postMessage({ReqID: evt.data, Tx: window.TxMap.get(evt.data)});
+    }
+};
+
+if(window.parent != window.self) { // I'm an iframe
+    window.addEventListener('message', handleMessageAsIframe);
+}
+window.addEventListener("load", onLoaded);
+
+</script>
+</body>
+</html>
