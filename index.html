@@ -11,7 +11,12 @@
     import utils from "./utils/index.esm.js";
     window.utils = utils;
     window.TxMap = new Map();
-    window.NETWORK = "bchtest"; // bitcoincash bchtest
+    const params = new URL(window.location.href).searchParams;
+    if(params.get('testnet')) {
+        window.NETWORK = "bchtest";
+    } else {
+        window.NETWORK = "bitcoincash";
+    }
 </script>
 <style>
         input {

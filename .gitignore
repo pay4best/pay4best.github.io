@@ -2,3 +2,4 @@
 utils/index.js
 utils/index.d.ts
 utils/utils.js
+*.swp
