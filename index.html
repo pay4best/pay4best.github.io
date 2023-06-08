@@ -85,7 +85,8 @@
 
 <div id="withTxReq" class="section" style="display: none">
     <p>Origin: <span id="origin"></span></p>
-    <button class="button" onclick="signTx()">Sign It!</button>
+    <button class="button" onclick="signTx()">Sign It!</button><br><br>
+    <button class="button" onclick="refuse()">Refuse</button><br>
 </div>
 
 <div id="myModal" class="modal" style="display: none">
@@ -280,6 +281,24 @@ async function handleMessageAsIframe(e) {
         if(evt.data.ReqID == reqID && evt.data.Result.origin == tx.origin) {
             window.TxMap.delete(reqID);
             e.ports[0].postMessage(evt.data.Result); //return the signed tx
+        }
+    };
+}
+
+async function refuse() {
+    const params = new URL(window.location.href).searchParams;
+    const reqID = params.get('req');
+    const origin = decodeURI(params.get('origin'));
+
+    console.log("TxReqIDChannel.postMessage", reqID);
+    TxReqIDChannel.postMessage(reqID);
+    TxReqChannel.onmessage = async function(evt) {
+        console.log("TxReqChannel.onmessage", evt.data);
+        console.log(evt.data.ReqID, reqID, evt.data.Tx.origin, origin);
+        if(evt.data.ReqID == reqID && evt.data.Tx.origin == origin) {
+            console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {refused: true}});
+            TxRespChannel.postMessage({ReqID: reqID, Result: {refused: true}});
+            window.close();
         }
     };
 }
