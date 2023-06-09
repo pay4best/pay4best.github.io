@@ -297,7 +297,8 @@ async function refuse() {
         console.log(evt.data.ReqID, reqID, evt.data.Tx.origin, origin);
         if(evt.data.ReqID == reqID && evt.data.Tx.origin == origin) {
             console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {refused: true}});
-            TxRespChannel.postMessage({ReqID: reqID, Result: {refused: true}});
+            const tx = evt.data.Tx;
+            TxRespChannel.postMessage({ReqID: reqID, Result: {refused: true, origin: tx.origin}});
             window.close();
         }
     };
