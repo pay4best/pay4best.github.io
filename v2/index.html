@@ -136,9 +136,9 @@ async function getObjectHash(obj) {
 	}
     });
     const encoder = new TextEncoder();
-    console.log(jsonStr, encoder.encode(jsonStr));
+    //console.log(jsonStr, encoder.encode(jsonStr));
     const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(jsonStr)));
-    console.log(hash.toString());
+    //console.log(hash.toString());
     return Array.from(hash).map(n => n.toString(16).padStart(2, "0")).join(""); //to hex
 }
 
@@ -201,21 +201,18 @@ async function checkOrigin(origin) {
     }
     if(!window.EVMAddress) {
         const accounts = await window.ethereum.request({method: "eth_requestAccounts"});
-        console.log(accounts);	
         const addr = accounts[0];
         window.EVMAddress = addr;
     }
     const key = "lastvisit"+origin;
     const ts = localStorage.getItem(key);
-    console.log("in checkOrigin", ts, localStorage.getItem(key));
+    //console.log("in checkOrigin", ts, localStorage.getItem(key));
     if(ts && Date.now() - ts < 24*3600*1000 /* visited in last 24 hours*/) {
         return true;
     }
     const text="I allow "+origin+" to connect to my pay4.best wallet."
-    console.log(text);
     const msg = utils.textToUtf8Hex(text);
     const signature = await ethereum.request({method: "personal_sign", params: [msg, window.EVMAddress]});
-    console.log(signature);
     if(!signature) {
         return false;
     } else {
@@ -227,7 +224,6 @@ async function checkOrigin(origin) {
 async function connectWallet() {
     if(!await connect()) {return;}
     const accounts = await window.ethereum.request({method: "eth_requestAccounts"});
-    console.log(accounts);	
     const addr = accounts[0];
     window.EVMAddress = addr;
 
@@ -252,7 +248,7 @@ async function onLoaded(e) {
         await initPage();
     } else {
         //if we have no wallet, let's ask for it
-        console.log("send-me-wif");
+        //console.log("send-me-wif");
         WalletReqChannel.postMessage("send-me-wif");
         //wait for someone else to broadcast wif
         if(window.top == window.self) {
@@ -288,10 +284,6 @@ function tokenToHtml(token) {
 function fillTxReq(inputs, sourceOutputs, outputs) {
     const privKeyArr = utils.wifToPrivateKey(window.WIF);
     const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
-    console.log("H", cashAddr);
-    console.log("inputs", inputs);
-    console.log("sourceOutputs", sourceOutputs);
-    console.log("outputs", outputs);
     document.getElementById("currAccount").innerText = cashAddr.split(":")[1];
     let htmlStr = "";
     let inputSatoshis = 0n; 
@@ -303,7 +295,6 @@ function fillTxReq(inputs, sourceOutputs, outputs) {
 	    htmlStr += "<b>in#"+index+'<span style="color: brown;">&nbsp;(My UTXO)</b><br>';
 	}
 	htmlStr += (Number(src.valueSatoshis)/1e8)+"BCH<br>";
-	console.log("src.valueSatoshis", src.valueSatoshis);
 	inputSatoshis += BigInt(src.valueSatoshis);
 	const token = src.token;
 	htmlStr += tokenToHtml(token);
@@ -318,7 +309,6 @@ function fillTxReq(inputs, sourceOutputs, outputs) {
             htmlStr += "<b>out#"+index+'<span style="color: brown;">&nbsp;(My UTXO)</b><br>';
 	}
 	htmlStr += (Number(output.valueSatoshis)/1e8)+"BCH<br>";
-	console.log("output.valueSatoshis", output.valueSatoshis);
 	outputSatoshis += BigInt(output.valueSatoshis);
 	htmlStr += tokenToHtml(output.token);
     }
@@ -340,14 +330,14 @@ async function initPage() {
         const origin = decodeURI(params.get('origin'));
         document.getElementById("origin").innerText = origin;
 
-        console.log("TxReqIDChannel.postMessage", reqID);
+        //console.log("TxReqIDChannel.postMessage", reqID);
         TxReqIDChannel.postMessage(reqID);
         TxReqChannel.onmessage = async function(evt) {
-            console.log("TxReqChannel.onmessage", evt.data);
-            console.log(evt.data.ReqID, reqID, evt.data.Tx.origin, origin);
+            //console.log("TxReqChannel.onmessage", evt.data);
+            //console.log(evt.data.ReqID, reqID, evt.data.Tx.origin, origin);
             if(evt.data.ReqID == reqID && evt.data.Tx.origin == origin) {
                 window.Tx = evt.data.Tx;
-                console.log("TX", window.Tx.transaction);
+                //console.log("TX", window.Tx.transaction);
                 let outputs = utils.extractOutputs(Tx.transaction, window.NETWORK);
                 fillTxReq(Tx.transaction.inputs, Tx.sourceOutputs, outputs);
             }
@@ -362,7 +352,6 @@ async function handleMessageAsIframe(e) {
     if(window.location.href.startsWith(e.origin)) {
         return; //ignore self-generated messages
     }
-    console.log("checkOrigin", e.origin, window.EVMAddress);
     if(!await checkOrigin(e.origin)) {
         return; //the user refused to connect
     }
@@ -383,16 +372,13 @@ async function handleMessageAsIframe(e) {
     var tx = e.data.Pay4BestWalletReq.UnsignedTx;
     const reqID = await getObjectHash(tx);
     tx.origin = e.origin; // add the origin site
-    console.log("reqID", reqID, tx);
     window.TxMap.set(reqID, tx);
     let targetURL = location.protocol+"//"+location.host+"/?origin="+encodeURI(e.origin)+"&req="+reqID;
     var newWindow = window.open(targetURL, '', 'width=200,height=300');
-    console.log("newWindow", newWindow);
     e.ports[0].postMessage({reqID: reqID, ok: newWindow !== null}); //return the reqID and window.open result
 
     TxRespChannel.onmessage = function(evt) {
-        console.log("as iframe", evt.data);
-        console.log(evt.data.ReqID, reqID, evt.data.Result.origin, tx.origin);
+        //console.log(evt.data.ReqID, reqID, evt.data.Result.origin, tx.origin);
         // the response matches the request
         if(evt.data.ReqID == reqID && evt.data.Result.origin == tx.origin) {
             window.TxMap.delete(reqID);
@@ -418,7 +404,7 @@ async function signTx() {
     const privKeyArr = utils.wifToPrivateKey(window.WIF);
     var signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
     // var signedTx = tx;
-    console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
+    //console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
     TxRespChannel.postMessage({ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
     window.close();
 }
@@ -451,14 +437,14 @@ async function initWithoutTxReq() {
 // get broadcasted key
 WalletChannel.onmessage = async function(evt) {
     if(window.WIF !== evt.data) { // it's a new key
-        console.log("get broadcasted wif ", window.WIF, evt.data);
+        //console.log("get broadcasted wif ", window.WIF, evt.data);
         await initWallet(evt.data);
     }
 };
 
 // broadcast key if someone requests
 WalletReqChannel.onmessage = function(evt) {
-    console.log("get broadcasted request");
+    //console.log("get broadcasted request");
     if(window.WIF) {
         WalletChannel.postMessage(window.WIF);
     }
@@ -466,9 +452,9 @@ WalletReqChannel.onmessage = function(evt) {
 
 // broadcast tx-signing-request if someone requests
 TxReqIDChannel.onmessage = function(evt) {
-    console.log("TxReqIDChannel.onmessage", evt.data);
+    //console.log("TxReqIDChannel.onmessage", evt.data);
     if(window.TxMap.has(evt.data)) {
-        console.log("TxReqChannel.postMessage", window.TxMap.get(evt.data));
+        //console.log("TxReqChannel.postMessage", window.TxMap.get(evt.data));
         TxReqChannel.postMessage({ReqID: evt.data, Tx: window.TxMap.get(evt.data)});
     }
 };
