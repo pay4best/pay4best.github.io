@@ -373,8 +373,8 @@ async function handleMessageAsIframe(e) {
     const reqID = await getObjectHash(tx);
     tx.origin = e.origin; // add the origin site
     window.TxMap.set(reqID, tx);
-    let targetURL = location.protocol+"//"+location.host+"/?origin="+encodeURI(e.origin)+"&req="+reqID;
-    var newWindow = window.open(targetURL, '', 'width=200,height=300');
+    let targetURL = location.protocol+"//"+location.host+"/v2/?origin="+encodeURI(e.origin)+"&req="+reqID;
+    var newWindow = window.open(targetURL, '', 'width=380,height=700');
     e.ports[0].postMessage({reqID: reqID, ok: newWindow !== null}); //return the reqID and window.open result
 
     TxRespChannel.onmessage = function(evt) {
