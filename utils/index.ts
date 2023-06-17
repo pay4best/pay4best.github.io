@@ -2,8 +2,8 @@ import {CashAddressNetworkPrefix, encodeCashAddress, WalletImportFormatType, Cas
 	hash160, sha256, binToHex, isHex, hexToBin, decodePrivateKeyWif, 
 	secp256k1, TransactionCommon, importAuthenticationTemplate, TransactionTemplateFixed,
 	authenticationTemplateP2pkhNonHd, authenticationTemplateToCompilerBCH,
-	generateTransaction, encodeTransaction} from '@bitauth/libauth';
-  const bchaddr =require('bchaddrjs') ;
+	generateTransaction, encodeTransaction, lockingBytecodeToCashAddress} from '@bitauth/libauth';
+const bchaddr =require('bchaddrjs') ;
 const wif = require('wif')
 import {Buffer} from "Buffer"
 
@@ -16,13 +16,17 @@ export function hexToWif(hexStr: string, network: CashAddressNetworkPrefix) {
 	}
 } 
 
-export function cashAddrToLegacy(cashAddr: string) {
+export function cashAddrToLegacy(cashAddr: string): string {
 	return bchaddr.toLegacyAddress(cashAddr);
 } 
 
 export interface PrivateKeyI {
   privateKey: Uint8Array;
   type: WalletImportFormatType;
+}
+
+export function uint8ArrayToHex(arr: Uint8Array): string {
+	return binToHex(arr);
 }
 
 export function hexSecretToHexPrivkey(text: string): string {
@@ -66,6 +70,7 @@ export function deriveCashaddr(
 
 export interface SourceOutput {
     valueSatoshis: bigint;
+    cashAddress?: string;
     token?: {
         amount: bigint;
         category: Uint8Array;
@@ -74,6 +79,26 @@ export interface SourceOutput {
             commitment: Uint8Array;
         };
     }
+}
+
+export function extractOutputs(
+  tx: TransactionCommon,
+  network: "bitcoincash" | "bchtest" | "bchreg"
+): SourceOutput[] {
+  let outputs: SourceOutput[] = [];
+  for(const out of tx.outputs) {
+    const result = lockingBytecodeToCashAddress(out.lockingBytecode, network);
+    if(typeof result !== "string") {
+      throw result;
+    }
+    const entry: SourceOutput = {
+      valueSatoshis: out.valueSatoshis,
+      cashAddress: result as string,
+      token: out.token,
+    };
+    outputs.push(entry);
+  }
+  return outputs;
 }
 
 export function signUnsignedTransaction(

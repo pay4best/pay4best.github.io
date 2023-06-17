@@ -36897,7 +36897,7 @@ var wif$1 = {
 Object.defineProperty(utils, "__esModule", {
   value: true
 });
-var signUnsignedTransaction_1 = utils.signUnsignedTransaction = deriveCashaddr_1 = utils.deriveCashaddr = wifToPrivateKey_1 = utils.wifToPrivateKey = textToUtf8Hex_1 = utils.textToUtf8Hex = hexSecretToHexPrivkey_1 = utils.hexSecretToHexPrivkey = cashAddrToLegacy_1 = utils.cashAddrToLegacy = hexToWif_1 = utils.hexToWif = void 0;
+var signUnsignedTransaction_1 = utils.signUnsignedTransaction = extractOutputs_1 = utils.extractOutputs = deriveCashaddr_1 = utils.deriveCashaddr = wifToPrivateKey_1 = utils.wifToPrivateKey = textToUtf8Hex_1 = utils.textToUtf8Hex = hexSecretToHexPrivkey_1 = utils.hexSecretToHexPrivkey = uint8ArrayToHex_1 = utils.uint8ArrayToHex = cashAddrToLegacy_1 = utils.cashAddrToLegacy = hexToWif_1 = utils.hexToWif = void 0;
 var libauth_1 = require$$0$2;
 var bchaddr = bchaddr$1;
 var wif = wif$1;
@@ -36915,6 +36915,10 @@ function cashAddrToLegacy(cashAddr) {
   return bchaddr.toLegacyAddress(cashAddr);
 }
 var cashAddrToLegacy_1 = utils.cashAddrToLegacy = cashAddrToLegacy;
+function uint8ArrayToHex(arr) {
+  return (0, libauth_1.binToHex)(arr);
+}
+var uint8ArrayToHex_1 = utils.uint8ArrayToHex = uint8ArrayToHex;
 function hexSecretToHexPrivkey(text) {
   if (!(0, libauth_1.isHex)(text)) {
     throw "Invalid Hex Secret";
@@ -36949,6 +36953,32 @@ function deriveCashaddr(privateKey, networkPrefix, addrType) {
   return (0, libauth_1.encodeCashAddress)(networkPrefix, addrType, pkh);
 }
 var deriveCashaddr_1 = utils.deriveCashaddr = deriveCashaddr;
+function extractOutputs(tx, network) {
+  var outputs = [];
+  var _iterator = _createForOfIteratorHelper(tx.outputs),
+    _step;
+  try {
+    for (_iterator.s(); !(_step = _iterator.n()).done;) {
+      var out = _step.value;
+      var result = (0, libauth_1.lockingBytecodeToCashAddress)(out.lockingBytecode, network);
+      if (typeof result !== "string") {
+        throw result;
+      }
+      var entry = {
+        valueSatoshis: out.valueSatoshis,
+        cashAddress: result,
+        token: out.token
+      };
+      outputs.push(entry);
+    }
+  } catch (err) {
+    _iterator.e(err);
+  } finally {
+    _iterator.f();
+  }
+  return outputs;
+}
+var extractOutputs_1 = utils.extractOutputs = extractOutputs;
 function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
   var template = (0, libauth_1.importAuthenticationTemplate)(libauth_1.authenticationTemplateP2pkhNonHd);
   if (typeof template === "string") {
@@ -36956,13 +36986,13 @@ function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
   }
   var compiler = (0, libauth_1.authenticationTemplateToCompilerBCH)(template);
   var transactionTemplate = Object.assign({}, decoded);
-  var _iterator = _createForOfIteratorHelper(decoded.inputs.entries()),
-    _step;
+  var _iterator2 = _createForOfIteratorHelper(decoded.inputs.entries()),
+    _step2;
   try {
-    for (_iterator.s(); !(_step = _iterator.n()).done;) {
-      var _step$value = _slicedToArray(_step.value, 2),
-        index = _step$value[0],
-        input = _step$value[1];
+    for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+      var _step2$value = _slicedToArray(_step2.value, 2),
+        index = _step2$value[0],
+        input = _step2$value[1];
       if (input.unlockingBytecode.byteLength > 0) {
         continue;
       }
@@ -36984,9 +37014,9 @@ function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
       });
     }
   } catch (err) {
-    _iterator.e(err);
+    _iterator2.e(err);
   } finally {
-    _iterator.f();
+    _iterator2.f();
   }
   var result = (0, libauth_1.generateTransaction)(transactionTemplate);
   if (!result.success) {
@@ -36996,4 +37026,4 @@ function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
 }
 signUnsignedTransaction_1 = utils.signUnsignedTransaction = signUnsignedTransaction;
 
-export { cashAddrToLegacy_1 as cashAddrToLegacy, utils as default, deriveCashaddr_1 as deriveCashaddr, hexSecretToHexPrivkey_1 as hexSecretToHexPrivkey, hexToWif_1 as hexToWif, signUnsignedTransaction_1 as signUnsignedTransaction, textToUtf8Hex_1 as textToUtf8Hex, wifToPrivateKey_1 as wifToPrivateKey };
+export { cashAddrToLegacy_1 as cashAddrToLegacy, utils as default, deriveCashaddr_1 as deriveCashaddr, extractOutputs_1 as extractOutputs, hexSecretToHexPrivkey_1 as hexSecretToHexPrivkey, hexToWif_1 as hexToWif, signUnsignedTransaction_1 as signUnsignedTransaction, textToUtf8Hex_1 as textToUtf8Hex, uint8ArrayToHex_1 as uint8ArrayToHex, wifToPrivateKey_1 as wifToPrivateKey };
