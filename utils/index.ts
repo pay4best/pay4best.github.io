@@ -1,5 +1,5 @@
 import {CashAddressNetworkPrefix, encodeCashAddress, WalletImportFormatType, CashAddressType,
-	hash160, sha256, binToHex, isHex, hexToBin, decodePrivateKeyWif, 
+	hash160, sha256, binToHex, isHex, hexToBin, decodePrivateKeyWif, disassembleBytecodeBCH,
 	secp256k1, TransactionCommon, importAuthenticationTemplate, TransactionTemplateFixed,
 	authenticationTemplateP2pkhNonHd, authenticationTemplateToCompilerBCH,
 	generateTransaction, encodeTransaction, lockingBytecodeToCashAddress} from '@bitauth/libauth';
@@ -87,9 +87,9 @@ export function extractOutputs(
 ): SourceOutput[] {
   let outputs: SourceOutput[] = [];
   for(const out of tx.outputs) {
-    const result = lockingBytecodeToCashAddress(out.lockingBytecode, network);
+    let result = lockingBytecodeToCashAddress(out.lockingBytecode, network);
     if(typeof result !== "string") {
-      throw result;
+      result = disassembleBytecodeBCH(out.lockingBytecode)
     }
     const entry: SourceOutput = {
       valueSatoshis: out.valueSatoshis,

@@ -25595,7 +25595,7 @@ var argv = [];
 var version = ''; // empty string to avoid regexp issues
 var versions = {};
 var release = {};
-var config$1 = {};
+var config = {};
 function noop$2() {}
 var on = noop$2;
 var addListener = noop$2;
@@ -25667,7 +25667,7 @@ var browser$1$1 = {
   hrtime: hrtime,
   platform: platform,
   release: release,
-  config: config$1,
+  config: config,
   uptime: uptime
 };
 var process = browser$1$1;
@@ -26109,11 +26109,11 @@ function format(f) {
 // Mark that a method should not be used.
 // Returns a modified function which warns once by default.
 // If --no-deprecation is set, then it is a no-op.
-function deprecate$1(fn, msg) {
+function deprecate(fn, msg) {
   // Allow for deprecating things in the process of starting up.
   if (isUndefined(global$1.process)) {
     return function () {
-      return deprecate$1(fn, msg).apply(this, arguments);
+      return deprecate(fn, msg).apply(this, arguments);
     };
   }
   if (process.noDeprecation === true) {
@@ -26534,7 +26534,7 @@ var util = {
   isBoolean: isBoolean,
   isArray: isArray,
   inspect: inspect,
-  deprecate: deprecate$1,
+  deprecate: deprecate,
   format: format,
   debuglog: debuglog
 };
@@ -26542,7 +26542,7 @@ var util = {
 var util$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   format: format,
-  deprecate: deprecate$1,
+  deprecate: deprecate,
   debuglog: debuglog,
   inspect: inspect,
   isArray: isArray,
@@ -27048,69 +27048,76 @@ var state = {
   getHighWaterMark: getHighWaterMark
 };
 
-/**
- * Module exports.
- */
+var browser$1;
+var hasRequiredBrowser;
+function requireBrowser() {
+  if (hasRequiredBrowser) return browser$1;
+  hasRequiredBrowser = 1;
+  /**
+   * Module exports.
+   */
 
-var browser$1 = deprecate;
+  browser$1 = deprecate;
 
-/**
- * Mark that a method should not be used.
- * Returns a modified function which warns once by default.
- *
- * If `localStorage.noDeprecation = true` is set, then it is a no-op.
- *
- * If `localStorage.throwDeprecation = true` is set, then deprecated functions
- * will throw an Error when invoked.
- *
- * If `localStorage.traceDeprecation = true` is set, then deprecated functions
- * will invoke `console.trace()` instead of `console.error()`.
- *
- * @param {Function} fn - the function to deprecate
- * @param {String} msg - the string to print to the console when `fn` is invoked
- * @returns {Function} a new "deprecated" version of `fn`
- * @api public
- */
+  /**
+   * Mark that a method should not be used.
+   * Returns a modified function which warns once by default.
+   *
+   * If `localStorage.noDeprecation = true` is set, then it is a no-op.
+   *
+   * If `localStorage.throwDeprecation = true` is set, then deprecated functions
+   * will throw an Error when invoked.
+   *
+   * If `localStorage.traceDeprecation = true` is set, then deprecated functions
+   * will invoke `console.trace()` instead of `console.error()`.
+   *
+   * @param {Function} fn - the function to deprecate
+   * @param {String} msg - the string to print to the console when `fn` is invoked
+   * @returns {Function} a new "deprecated" version of `fn`
+   * @api public
+   */
 
-function deprecate(fn, msg) {
-  if (config('noDeprecation')) {
-    return fn;
-  }
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (config('throwDeprecation')) {
-        throw new Error(msg);
-      } else if (config('traceDeprecation')) {
-        console.trace(msg);
-      } else {
-        console.warn(msg);
-      }
-      warned = true;
+  function deprecate(fn, msg) {
+    if (config('noDeprecation')) {
+      return fn;
     }
-    return fn.apply(this, arguments);
+    var warned = false;
+    function deprecated() {
+      if (!warned) {
+        if (config('throwDeprecation')) {
+          throw new Error(msg);
+        } else if (config('traceDeprecation')) {
+          console.trace(msg);
+        } else {
+          console.warn(msg);
+        }
+        warned = true;
+      }
+      return fn.apply(this, arguments);
+    }
+    return deprecated;
   }
-  return deprecated;
-}
 
-/**
- * Checks `localStorage` for boolean values for the given `name`.
- *
- * @param {String} name
- * @returns {Boolean}
- * @api private
- */
+  /**
+   * Checks `localStorage` for boolean values for the given `name`.
+   *
+   * @param {String} name
+   * @returns {Boolean}
+   * @api private
+   */
 
-function config(name) {
-  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
-  try {
-    if (!commonjsGlobal.localStorage) return false;
-  } catch (_) {
-    return false;
+  function config(name) {
+    // accessing global.localStorage can trigger a DOMException in sandboxed iframes
+    try {
+      if (!commonjsGlobal.localStorage) return false;
+    } catch (_) {
+      return false;
+    }
+    var val = commonjsGlobal.localStorage[name];
+    if (null == val) return false;
+    return String(val).toLowerCase() === 'true';
   }
-  var val = commonjsGlobal.localStorage[name];
-  if (null == val) return false;
-  return String(val).toLowerCase() === 'true';
+  return browser$1;
 }
 
 var _stream_writable;
@@ -27140,7 +27147,7 @@ function require_stream_writable() {
 
   /*<replacement>*/
   var internalUtil = {
-    deprecate: browser$1
+    deprecate: requireBrowser()
   };
   /*</replacement>*/
 
@@ -31677,7 +31684,7 @@ function WriteReq(chunk, encoding, cb) {
 }
 function WritableState(options, stream) {
   Object.defineProperty(this, 'buffer', {
-    get: deprecate$1(function () {
+    get: deprecate(function () {
       return this.getBuffer();
     }, '_writableState.buffer is deprecated. Use _writableState.getBuffer ' + 'instead.')
   });
@@ -36962,7 +36969,7 @@ function extractOutputs(tx, network) {
       var out = _step.value;
       var result = (0, libauth_1.lockingBytecodeToCashAddress)(out.lockingBytecode, network);
       if (typeof result !== "string") {
-        throw result;
+        result = (0, libauth_1.disassembleBytecodeBCH)(out.lockingBytecode);
       }
       var entry = {
         valueSatoshis: out.valueSatoshis,
