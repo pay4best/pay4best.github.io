@@ -263,7 +263,8 @@ async function onLoaded(e) {
     }
 
     window.ethereum?.on('accountsChanged', async (accounts) => {
-      window.location.reload()
+      //window.location.reload();
+      connectWallet();
     });
 }
 
