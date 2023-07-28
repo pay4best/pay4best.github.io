@@ -252,7 +252,7 @@ async function checkOrigin(origin) {
     if(ts && Date.now() - ts < 24*3600*1000 /* visited in last 24 hours*/) {
         return true;
     }
-    const text="I allow "+origin+" to connect to my pay4.best wallet."
+    const text="I allow "+origin+" to connect to my pay4.best wallet.";
     const msg = utils.textToUtf8Hex(text);
     const signature = await ethereum.request({method: "personal_sign", params: [msg, window.EVMAddress]});
     if(!signature) {
