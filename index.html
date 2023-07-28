@@ -8,12 +8,19 @@
 <script src="assets/detect-provider.min.js"></script>
 <title>pay4.best wallet</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+<script src="/assets/mainnet.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", async (event) => {
+      globalThis.exports = globalThis.exports || {};
+      Object.assign(globalThis, await __mainnetPromise);
+    });
+  </script>
 <script type="module">
-    import utils from "./utils/index1.esm.js";
+    import utils from "./utils/index.esm.js";
     window.utils = utils;
     window.TxMap = new Map();
     const params = new URL(window.location.href).searchParams;
-    if(params.get('testnet')) {
+    if(params.get('testnet')==="true") {
         window.NETWORK = "bchtest";
     } else {
         window.NETWORK = "bitcoincash";
@@ -111,6 +118,30 @@ IS WITH YOU.</p>
     <p id="outputs"></p>
 </div>
 
+<div id="withGenerateUrl" style="padding: 10px; display: none">
+    <p><b>URL:</b><br> <a id="generatedUrl" onclick="copyText(event.target.text);myAlert('Copy successfully and please open it with chrome');">1321</a></p>
+    <td><canvas id="generatedUrlQR"></canvas></td></tr>
+    <p>Please copy the url and open it with chrome</p>
+</div>
+
+<div id="withBroadcastTx" style="padding: 10px; display: none">
+    <div class="columns">
+      <div class="column">
+        <button class="button is-danger" onclick="refuse()">Refuse</button><br>
+      </div>
+      <div class="column">
+        <button class="button is-success" onclick="handleBroadcastTx()">Broadcast</button><br><br>
+      </div>
+    </div>
+    <p><b>Signing Request From:</b><br> <span id="origin"></span></p>
+    <p><b>Current Account:</b><br> <span id="currAccount"></span></p>
+    <p><b>Miner Fee:</b> <span id="minerFee"></span>satoshi</p>
+    <p><b>INPUTS:</b></p>
+    <p id="inputs"></p>
+    <p><b>OUTPUTS:</b></p>
+    <p id="outputs"></p>
+</div>
+
 <div id="myModal" class="modal" style="display: none">
     <div class="modal-content">
         <p id="modalContent" style="text-align: center; overflow-wrap: break-word"></p>
@@ -153,6 +184,17 @@ function IsPC() {
              }
        }
        return flag;
+}
+
+function copyText(text) {
+    let inputDom = document.createElement('input');
+    inputDom.setAttribute('readonly', 'readonly');
+    inputDom.value = text;
+    document.body.appendChild(inputDom);
+    inputDom.select();
+    document.execCommand('Copy');
+    inputDom.style.display = 'none';
+    inputDom.remove();
 }
 
 async function connect() {
@@ -255,7 +297,7 @@ async function onLoaded(e) {
             window.setTimeout(async function() {
                 //if nobody broadcasted wif, connect to MetaMask to get it
                 if(!window.WIF) {
-                    connectWallet();
+                 await connectWallet();
                 }
                 await initPage(); //finaly we can init page with the wallet
             }, 3000);
@@ -285,7 +327,7 @@ function tokenToHtml(token) {
 function fillTxReq(inputs, sourceOutputs, outputs) {
     const privKeyArr = utils.wifToPrivateKey(window.WIF);
     const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
-    document.getElementById("currAccount").innerText = cashAddr.split(":")[1];
+    Array.from(document.querySelectorAll("#currAccount")).forEach(v => v.innerText = cashAddr.split(":")[1])
     let htmlStr = "";
     let inputSatoshis = 0n; 
     for(const [index, input] of inputs.entries()) {
@@ -300,7 +342,7 @@ function fillTxReq(inputs, sourceOutputs, outputs) {
 	const token = src.token;
 	htmlStr += tokenToHtml(token);
     }
-    document.getElementById("inputs").innerHTML = htmlStr;
+    Array.from(document.querySelectorAll("#inputs")).forEach(v => v.innerHTML = htmlStr)
     htmlStr = "";
     let outputSatoshis = 0n; 
     for(const [index, output] of outputs.entries()) {
@@ -313,9 +355,23 @@ function fillTxReq(inputs, sourceOutputs, outputs) {
 	outputSatoshis += BigInt(output.valueSatoshis);
 	htmlStr += tokenToHtml(output.token);
     }
-    document.getElementById("outputs").innerHTML = htmlStr;
-    document.getElementById("minerFee").innerText = inputSatoshis-outputSatoshis;
-    document.getElementById("withTxReq").style.display = "block";
+    Array.from(document.querySelectorAll("#outputs")).forEach(v => v.innerHTML = htmlStr)
+    Array.from(document.querySelectorAll("#minerFee")).forEach(v => v.innerText = inputSatoshis-outputSatoshis)
+}
+
+function fillGenerateUrl(){
+    const privKeyArr = utils.wifToPrivateKey(window.WIF);
+    const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
+    const params = new URL(window.location.href).searchParams;
+    const origin = params.get('generateUrl')
+    let url
+    if(origin.includes("?")) {
+        url = origin + "&wallet=" + cashAddr + "&evmAddress=" + window.EVMAddress
+    } else {
+        url = origin + "?wallet=" + cashAddr + "&evmAddress=" + window.EVMAddress
+    }
+    document.getElementById("generatedUrl").innerText = url;
+    new QRious({element: document.getElementById("generatedUrlQR"), value: url});
 }
 
 async function initPage() {
@@ -341,8 +397,17 @@ async function initPage() {
                 //console.log("TX", window.Tx.transaction);
                 let outputs = utils.extractOutputs(Tx.transaction, window.NETWORK);
                 fillTxReq(Tx.transaction.inputs, Tx.sourceOutputs, outputs);
+                document.getElementById("withTxReq").style.display = "block";
             }
         }
+    } else if(params.get('broadcasttx')) {
+        window.Tx = utils.unPack(params.get('broadcasttx'))
+        let outputs = utils.extractOutputs(Tx.transaction, window.NETWORK);
+        fillTxReq(Tx.transaction.inputs, Tx.sourceOutputs, outputs);
+        document.getElementById("withBroadcastTx").style.display = "block";
+    } else if(params.get('generateUrl')) {
+        fillGenerateUrl()
+        document.getElementById("withGenerateUrl").style.display = "block";
     } else {
         await initWithoutTxReq();
         document.getElementById("withoutTxReq").style.display = "block";
@@ -408,6 +473,30 @@ async function signTx() {
     //console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
     TxRespChannel.postMessage({ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
     window.close();
+}
+
+async function handleBroadcastTx() {
+    const privKeyArr = utils.wifToPrivateKey(window.WIF);
+    const tx = window.Tx
+    var signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
+ 
+    let _Wallet
+    if (window.NETWORK === "bchtest") {
+         _Wallet = await TestNetWallet.newRandom()
+    } else {
+        _Wallet =await Wallet.newRandom();
+    }
+    try {
+        const toHexString = (bytes) => {
+        return Array.from(bytes, (byte) => {
+            return ('0' + (byte & 0xff).toString(16)).slice(-2);
+        }).join('');
+        };
+        await _Wallet.submitTransaction(hexToBin(toHexString(signedTx)))
+        myAlert("Transaction broadcast success")   
+    } catch (error) {
+        myAlert("error: " + (error.message || error))   
+    }
 }
 
 async function showWIF() {

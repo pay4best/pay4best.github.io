@@ -6,6 +6,8 @@ import {CashAddressNetworkPrefix, encodeCashAddress, WalletImportFormatType, Cas
 const bchaddr =require('bchaddrjs') ;
 const wif = require('wif')
 import {Buffer} from "Buffer"
+import { decode, encode } from "algo-msgpack-with-bigint";
+import base64url from "base64url";
 
 export function hexToWif(hexStr: string, network: CashAddressNetworkPrefix) {
 	var privateKey = new Buffer(hexStr, 'hex')
@@ -146,3 +148,24 @@ export function signUnsignedTransaction(
   return encodeTransaction(result.transaction);
 }
 
+export function pack(tx: any) {
+    const hex = Buffer.from(encode(tx)).toString("hex")
+    return base64url.encode(hex)
+}
+
+export function unPack(tx: string) {
+    const hex = base64url.decode(tx)
+    const result = decode(Buffer.from(hex, "hex"))
+    return JSON.parse(JSON.stringify(result), function(key, value) {
+      if(value && value.type === "Buffer" ) {
+          return new Uint8Array(value.data);
+      }
+      if(["token","nft"].includes(key) && value === null) {
+          return undefined
+      }    
+      if(["valueSatoshis","amount"].includes(key)) {
+          return BigInt(value)
+      } 
+      return value;
+    })
+}
