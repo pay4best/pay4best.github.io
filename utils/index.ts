@@ -7,7 +7,6 @@ const bchaddr =require('bchaddrjs') ;
 const wif = require('wif')
 import {Buffer} from "Buffer"
 import { decode, encode } from "algo-msgpack-with-bigint";
-import base64url from "base64url";
 
 export function hexToWif(hexStr: string, network: CashAddressNetworkPrefix) {
 	var privateKey = new Buffer(hexStr, 'hex')
@@ -149,23 +148,40 @@ export function signUnsignedTransaction(
 }
 
 export function pack(tx: any) {
-    const hex = Buffer.from(encode(tx)).toString("hex")
-    return base64url.encode(hex)
+    return base64EncodeURL(encode(tx))
 }
 
 export function unPack(tx: string) {
-    const hex = base64url.decode(tx)
-    const result = decode(Buffer.from(hex, "hex"))
-    return JSON.parse(JSON.stringify(result), function(key, value) {
-      if(value && value.type === "Buffer" ) {
-          return new Uint8Array(value.data);
+  const result = decode(base64DecodeURL(tx))
+  return JSON.parse(JSON.stringify(result), function (key, value) {
+    if (!!value && typeof value === "object") {
+      const keys = Object.keys(value)
+      const values = Object.values(value)
+
+      const b = keys.every((v: any) => typeof Number(v) === "number") && values.every((v: any) => typeof v === "number")
+      if (!b) {
+        return value
       }
-      if(["token","nft"].includes(key) && value === null) {
-          return undefined
-      }    
-      if(["valueSatoshis","amount"].includes(key)) {
-          return BigInt(value)
-      } 
-      return value;
-    })
+      return new Uint8Array(values as any);
+    }
+    if (["token", "nft"].includes(key) && value === null) {
+      return undefined
+    }
+    if (["valueSatoshis", "amount"].includes(key)) {
+      return BigInt(value)
+    }
+    return value;
+  })
 }
+function base64EncodeURL(byteArray: Uint8Array) {
+  return btoa(Array.from(new Uint8Array(byteArray)).map(val => {
+    return String.fromCharCode(val);
+  }).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/\=/g, '');
+}
+
+function base64DecodeURL(b64urlstring: string) {
+  return new Uint8Array(atob(b64urlstring.replace(/-/g, '+').replace(/_/g, '/')).split('').map(val => {
+    return val.charCodeAt(0);
+  }));
+}
+

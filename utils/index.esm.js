@@ -25595,7 +25595,7 @@ var argv = [];
 var version = ''; // empty string to avoid regexp issues
 var versions = {};
 var release = {};
-var config$1 = {};
+var config = {};
 function noop$2() {}
 var on = noop$2;
 var addListener = noop$2;
@@ -25667,7 +25667,7 @@ var browser$1$1 = {
   hrtime: hrtime,
   platform: platform,
   release: release,
-  config: config$1,
+  config: config,
   uptime: uptime
 };
 var process = browser$1$1;
@@ -26109,11 +26109,11 @@ function format(f) {
 // Mark that a method should not be used.
 // Returns a modified function which warns once by default.
 // If --no-deprecation is set, then it is a no-op.
-function deprecate$1(fn, msg) {
+function deprecate(fn, msg) {
   // Allow for deprecating things in the process of starting up.
   if (isUndefined(global$1.process)) {
     return function () {
-      return deprecate$1(fn, msg).apply(this, arguments);
+      return deprecate(fn, msg).apply(this, arguments);
     };
   }
   if (process.noDeprecation === true) {
@@ -26534,7 +26534,7 @@ var util = {
   isBoolean: isBoolean,
   isArray: isArray,
   inspect: inspect,
-  deprecate: deprecate$1,
+  deprecate: deprecate,
   format: format,
   debuglog: debuglog
 };
@@ -26542,7 +26542,7 @@ var util = {
 var util$1 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   format: format,
-  deprecate: deprecate$1,
+  deprecate: deprecate,
   debuglog: debuglog,
   inspect: inspect,
   isArray: isArray,
@@ -27048,69 +27048,76 @@ var state = {
   getHighWaterMark: getHighWaterMark
 };
 
-/**
- * Module exports.
- */
+var browser$1;
+var hasRequiredBrowser;
+function requireBrowser() {
+  if (hasRequiredBrowser) return browser$1;
+  hasRequiredBrowser = 1;
+  /**
+   * Module exports.
+   */
 
-var browser$1 = deprecate;
+  browser$1 = deprecate;
 
-/**
- * Mark that a method should not be used.
- * Returns a modified function which warns once by default.
- *
- * If `localStorage.noDeprecation = true` is set, then it is a no-op.
- *
- * If `localStorage.throwDeprecation = true` is set, then deprecated functions
- * will throw an Error when invoked.
- *
- * If `localStorage.traceDeprecation = true` is set, then deprecated functions
- * will invoke `console.trace()` instead of `console.error()`.
- *
- * @param {Function} fn - the function to deprecate
- * @param {String} msg - the string to print to the console when `fn` is invoked
- * @returns {Function} a new "deprecated" version of `fn`
- * @api public
- */
+  /**
+   * Mark that a method should not be used.
+   * Returns a modified function which warns once by default.
+   *
+   * If `localStorage.noDeprecation = true` is set, then it is a no-op.
+   *
+   * If `localStorage.throwDeprecation = true` is set, then deprecated functions
+   * will throw an Error when invoked.
+   *
+   * If `localStorage.traceDeprecation = true` is set, then deprecated functions
+   * will invoke `console.trace()` instead of `console.error()`.
+   *
+   * @param {Function} fn - the function to deprecate
+   * @param {String} msg - the string to print to the console when `fn` is invoked
+   * @returns {Function} a new "deprecated" version of `fn`
+   * @api public
+   */
 
-function deprecate(fn, msg) {
-  if (config('noDeprecation')) {
-    return fn;
-  }
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (config('throwDeprecation')) {
-        throw new Error(msg);
-      } else if (config('traceDeprecation')) {
-        console.trace(msg);
-      } else {
-        console.warn(msg);
-      }
-      warned = true;
+  function deprecate(fn, msg) {
+    if (config('noDeprecation')) {
+      return fn;
     }
-    return fn.apply(this, arguments);
+    var warned = false;
+    function deprecated() {
+      if (!warned) {
+        if (config('throwDeprecation')) {
+          throw new Error(msg);
+        } else if (config('traceDeprecation')) {
+          console.trace(msg);
+        } else {
+          console.warn(msg);
+        }
+        warned = true;
+      }
+      return fn.apply(this, arguments);
+    }
+    return deprecated;
   }
-  return deprecated;
-}
 
-/**
- * Checks `localStorage` for boolean values for the given `name`.
- *
- * @param {String} name
- * @returns {Boolean}
- * @api private
- */
+  /**
+   * Checks `localStorage` for boolean values for the given `name`.
+   *
+   * @param {String} name
+   * @returns {Boolean}
+   * @api private
+   */
 
-function config(name) {
-  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
-  try {
-    if (!commonjsGlobal.localStorage) return false;
-  } catch (_) {
-    return false;
+  function config(name) {
+    // accessing global.localStorage can trigger a DOMException in sandboxed iframes
+    try {
+      if (!commonjsGlobal.localStorage) return false;
+    } catch (_) {
+      return false;
+    }
+    var val = commonjsGlobal.localStorage[name];
+    if (null == val) return false;
+    return String(val).toLowerCase() === 'true';
   }
-  var val = commonjsGlobal.localStorage[name];
-  if (null == val) return false;
-  return String(val).toLowerCase() === 'true';
+  return browser$1;
 }
 
 var _stream_writable;
@@ -27140,7 +27147,7 @@ function require_stream_writable() {
 
   /*<replacement>*/
   var internalUtil = {
-    deprecate: browser$1
+    deprecate: requireBrowser()
   };
   /*</replacement>*/
 
@@ -31677,7 +31684,7 @@ function WriteReq(chunk, encoding, cb) {
 }
 function WritableState(options, stream) {
   Object.defineProperty(this, 'buffer', {
-    get: deprecate$1(function () {
+    get: deprecate(function () {
       return this.getBuffer();
     }, '_writableState.buffer is deprecated. Use _writableState.getBuffer ' + 'instead.')
   });
@@ -32739,7 +32746,7 @@ var CHARSET_INVERSE_INDEX = {
  * @returns {string}
  * @throws {ValidationError}
  */
-function encode$3(data) {
+function encode$2(data) {
   validate$2(data instanceof Uint8Array, 'Invalid data: ' + data + '.');
   var base32 = '';
   for (var i = 0; i < data.length; ++i) {
@@ -32758,7 +32765,7 @@ function encode$3(data) {
  * @returns {Uint8Array}
  * @throws {ValidationError}
  */
-function decode$3(string) {
+function decode$2(string) {
   validate$2(typeof string === 'string', 'Invalid base32-encoded string: ' + string + '.');
   var data = new Uint8Array(string.length);
   for (var i = 0; i < string.length; ++i) {
@@ -32769,8 +32776,8 @@ function decode$3(string) {
   return data;
 }
 var base32$1 = {
-  encode: encode$3,
-  decode: decode$3
+  encode: encode$2,
+  decode: decode$2
 };
 
 var BigInteger = {exports: {}};
@@ -34163,7 +34170,7 @@ var validate = validation.validate;
  * @returns {string}
  * @throws {ValidationError}
  */
-function encode$2(prefix, type, hash) {
+function encode$1(prefix, type, hash) {
   validate(typeof prefix === 'string' && isValidPrefix(prefix), 'Invalid prefix: ' + prefix + '.');
   validate(typeof type === 'string', 'Invalid type: ' + type + '.');
   validate(hash instanceof Uint8Array, 'Invalid hash: ' + hash + '.');
@@ -34183,7 +34190,7 @@ function encode$2(prefix, type, hash) {
  * @returns {object}
  * @throws {ValidationError}
  */
-function decode$2(address) {
+function decode$1(address) {
   validate(typeof address === 'string' && hasSingleCase(address), 'Invalid address: ' + address + '.');
   var pieces = address.toLowerCase().split(':');
   validate(pieces.length === 2, 'Missing prefix: ' + address + '.');
@@ -34456,8 +34463,8 @@ function hasSingleCase(string) {
   return string === string.toLowerCase() || string === string.toUpperCase();
 }
 var cashaddr$1 = {
-  encode: encode$2,
-  decode: decode$2,
+  encode: encode$1,
+  decode: decode$1,
   ValidationError: ValidationError
 };
 
@@ -36880,17 +36887,17 @@ function encodeRaw(version, privateKey, compressed) {
   }
   return result;
 }
-function decode$1(string, version) {
+function decode(string, version) {
   return decodeRaw(bs58check.decode(string), version);
 }
-function encode$1(version, privateKey, compressed) {
+function encode(version, privateKey, compressed) {
   if (typeof version === 'number') return bs58check.encode(encodeRaw(version, privateKey, compressed));
   return bs58check.encode(encodeRaw(version.version, version.privateKey, version.compressed));
 }
 var wif$1 = {
-  decode: decode$1,
+  decode: decode,
   decodeRaw: decodeRaw,
-  encode: encode$1,
+  encode: encode,
   encodeRaw: encodeRaw
 };
 
@@ -38175,78 +38182,6 @@ msgpack_min.exports;
 })(msgpack_min, msgpack_min.exports);
 var msgpack_minExports = msgpack_min.exports;
 
-var base64url$2 = {exports: {}};
-
-var base64url$1 = {};
-
-var padString$1 = {};
-
-Object.defineProperty(padString$1, "__esModule", {
-  value: true
-});
-function padString(input) {
-  var segmentLength = 4;
-  var stringLength = input.length;
-  var diff = stringLength % segmentLength;
-  if (!diff) {
-    return input;
-  }
-  var position = stringLength;
-  var padLength = segmentLength - diff;
-  var paddedStringLength = stringLength + padLength;
-  var buffer = Buffer$d.alloc(paddedStringLength);
-  buffer.write(input);
-  while (padLength--) {
-    buffer.write("=", position++);
-  }
-  return buffer.toString();
-}
-padString$1.default = padString;
-
-Object.defineProperty(base64url$1, "__esModule", {
-  value: true
-});
-var pad_string_1 = padString$1;
-function encode(input, encoding) {
-  if (encoding === void 0) {
-    encoding = "utf8";
-  }
-  if (Buffer$d.isBuffer(input)) {
-    return fromBase64(input.toString("base64"));
-  }
-  return fromBase64(Buffer$d.from(input, encoding).toString("base64"));
-}
-function decode(base64url, encoding) {
-  if (encoding === void 0) {
-    encoding = "utf8";
-  }
-  return Buffer$d.from(toBase64(base64url), "base64").toString(encoding);
-}
-function toBase64(base64url) {
-  base64url = base64url.toString();
-  return pad_string_1.default(base64url).replace(/\-/g, "+").replace(/_/g, "/");
-}
-function fromBase64(base64) {
-  return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-function toBuffer(base64url) {
-  return Buffer$d.from(toBase64(base64url), "base64");
-}
-var base64url = encode;
-base64url.encode = encode;
-base64url.decode = decode;
-base64url.toBase64 = toBase64;
-base64url.fromBase64 = fromBase64;
-base64url.toBuffer = toBuffer;
-base64url$1.default = base64url;
-
-base64url$2.exports;
-(function (module) {
-  module.exports = base64url$1.default;
-  module.exports.default = module.exports;
-})(base64url$2);
-var base64urlExports = base64url$2.exports;
-
 Object.defineProperty(utils, "__esModule", {
   value: true
 });
@@ -38256,7 +38191,6 @@ var bchaddr = bchaddr$1;
 var wif = wif$1;
 var Buffer_1 = buffer;
 var algo_msgpack_with_bigint_1 = msgpack_minExports;
-var base64url_1 = base64urlExports;
 function hexToWif(hexStr, network) {
   var privateKey = new Buffer_1.Buffer(hexStr, 'hex');
   if (network == libauth_1.CashAddressNetworkPrefix.mainnet) {
@@ -38381,16 +38315,24 @@ function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
 }
 var signUnsignedTransaction_1 = utils.signUnsignedTransaction = signUnsignedTransaction;
 function pack(tx) {
-  var hex = Buffer_1.Buffer.from((0, algo_msgpack_with_bigint_1.encode)(tx)).toString("hex");
-  return base64url_1.default.encode(hex);
+  return base64EncodeURL((0, algo_msgpack_with_bigint_1.encode)(tx));
 }
 var pack_1 = utils.pack = pack;
 function unPack(tx) {
-  var hex = base64url_1.default.decode(tx);
-  var result = (0, algo_msgpack_with_bigint_1.decode)(Buffer_1.Buffer.from(hex, "hex"));
+  var result = (0, algo_msgpack_with_bigint_1.decode)(base64DecodeURL(tx));
   return JSON.parse(JSON.stringify(result), function (key, value) {
-    if (value && value.type === "Buffer") {
-      return new Uint8Array(value.data);
+    if (!!value && _typeof(value) === "object") {
+      var keys = Object.keys(value);
+      var values = Object.values(value);
+      var b = keys.every(function (v) {
+        return typeof Number(v) === "number";
+      }) && values.every(function (v) {
+        return typeof v === "number";
+      });
+      if (!b) {
+        return value;
+      }
+      return new Uint8Array(values);
     }
     if (["token", "nft"].includes(key) && value === null) {
       return undefined;
@@ -38402,5 +38344,15 @@ function unPack(tx) {
   });
 }
 unPack_1 = utils.unPack = unPack;
+function base64EncodeURL(byteArray) {
+  return btoa(Array.from(new Uint8Array(byteArray)).map(function (val) {
+    return String.fromCharCode(val);
+  }).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/\=/g, '');
+}
+function base64DecodeURL(b64urlstring) {
+  return new Uint8Array(atob(b64urlstring.replace(/-/g, '+').replace(/_/g, '/')).split('').map(function (val) {
+    return val.charCodeAt(0);
+  }));
+}
 
 export { cashAddrToLegacy_1 as cashAddrToLegacy, utils as default, deriveCashaddr_1 as deriveCashaddr, extractOutputs_1 as extractOutputs, hexSecretToHexPrivkey_1 as hexSecretToHexPrivkey, hexToWif_1 as hexToWif, pack_1 as pack, signUnsignedTransaction_1 as signUnsignedTransaction, textToUtf8Hex_1 as textToUtf8Hex, uint8ArrayToHex_1 as uint8ArrayToHex, unPack_1 as unPack, wifToPrivateKey_1 as wifToPrivateKey };

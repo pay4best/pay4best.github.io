@@ -12,7 +12,10 @@
 <script>
     document.addEventListener("DOMContentLoaded", async (event) => {
       globalThis.exports = globalThis.exports || {};
-      Object.assign(globalThis, await __mainnetPromise);
+      const mainnet =  await __mainnetPromise
+      for (const key of ["Wallet","TestNetWallet","hexToBin"]) {
+        globalThis[key] = mainnet[key]
+      }
     });
   </script>
 <script type="module">
@@ -359,16 +362,18 @@ function fillTxReq(inputs, sourceOutputs, outputs) {
     Array.from(document.querySelectorAll("#minerFee")).forEach(v => v.innerText = inputSatoshis-outputSatoshis)
 }
 
-function fillGenerateUrl(){
+async function fillGenerateUrl(){
     const privKeyArr = utils.wifToPrivateKey(window.WIF);
     const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
     const params = new URL(window.location.href).searchParams;
     const origin = params.get('generateUrl')
+    const accounts = await window.ethereum.request({method: "eth_requestAccounts"});
+    const EVMAddress = accounts[0];
     let url
     if(origin.includes("?")) {
-        url = origin + "&wallet=" + cashAddr + "&evmAddress=" + window.EVMAddress
+        url = origin + "&wallet=" + cashAddr + "&evmAddress=" + EVMAddress
     } else {
-        url = origin + "?wallet=" + cashAddr + "&evmAddress=" + window.EVMAddress
+        url = origin + "?wallet=" + cashAddr + "&evmAddress=" + EVMAddress
     }
     document.getElementById("generatedUrl").innerText = url;
     new QRious({element: document.getElementById("generatedUrlQR"), value: url});
