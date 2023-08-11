@@ -13,6 +13,7 @@
     "strictFunctionTypes": true,
     "target": "es2015",
     "baseUrl": ".",
+    "esModuleInterop": true,
     "paths": { "immutability-helper": ["."] }
   },
   "files": [

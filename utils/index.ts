@@ -1,25 +1,32 @@
-import {CashAddressNetworkPrefix, encodeCashAddress, WalletImportFormatType, CashAddressType,
-	hash160, sha256, binToHex, isHex, hexToBin, decodePrivateKeyWif, disassembleBytecodeBCH,
-	secp256k1, TransactionCommon, importAuthenticationTemplate, TransactionTemplateFixed,
-	authenticationTemplateP2pkhNonHd, authenticationTemplateToCompilerBCH,
-	generateTransaction, encodeTransaction, lockingBytecodeToCashAddress} from '@bitauth/libauth';
-const bchaddr =require('bchaddrjs') ;
+import {
+  CashAddressNetworkPrefix, encodeCashAddress, WalletImportFormatType, CashAddressType,
+  hash160, sha256, binToHex, isHex, hexToBin, decodePrivateKeyWif, disassembleBytecodeBCH,
+  secp256k1, TransactionCommon, importAuthenticationTemplate, TransactionTemplateFixed,
+  authenticationTemplateP2pkhNonHd, authenticationTemplateToCompilerBCH,
+  generateTransaction, encodeTransaction, lockingBytecodeToCashAddress
+} from '@bitauth/libauth';
+import { hash256 } from '@cashscript/utils';
+import { createSighashPreimage } from 'cashscript/dist/utils.js';
+import { LibauthOutput } from 'cashscript/dist/interfaces.js';
+const SignatureTemplate = require('cashscript/dist/SignatureTemplate');
+
+const bchaddr = require('bchaddrjs');
 const wif = require('wif')
-import {Buffer} from "Buffer"
+import { Buffer } from "Buffer"
 import { decode, encode } from "algo-msgpack-with-bigint";
 
 export function hexToWif(hexStr: string, network: CashAddressNetworkPrefix) {
-	var privateKey = new Buffer(hexStr, 'hex')
-	if(network == CashAddressNetworkPrefix.mainnet) {
-		return wif.encode(128, privateKey, true)
-	} else {
-		return wif.encode(239, privateKey, true)
-	}
-} 
+  var privateKey = new Buffer(hexStr, 'hex')
+  if (network == CashAddressNetworkPrefix.mainnet) {
+    return wif.encode(128, privateKey, true)
+  } else {
+    return wif.encode(239, privateKey, true)
+  }
+}
 
 export function cashAddrToLegacy(cashAddr: string): string {
-	return bchaddr.toLegacyAddress(cashAddr);
-} 
+  return bchaddr.toLegacyAddress(cashAddr);
+}
 
 export interface PrivateKeyI {
   privateKey: Uint8Array;
@@ -27,33 +34,33 @@ export interface PrivateKeyI {
 }
 
 export function uint8ArrayToHex(arr: Uint8Array): string {
-	return binToHex(arr);
+  return binToHex(arr);
 }
 
 export function hexSecretToHexPrivkey(text: string): string {
-	if(!isHex(text)) {
-		throw "Invalid Hex Secret";
-	}
-	const hashHex = binToHex(sha256.hash(hexToBin(text)));
-	let n = BigInt("0x"+hashHex);
-	const m = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140");
-	n = n % m;
-	return n.toString(16);
+  if (!isHex(text)) {
+    throw "Invalid Hex Secret";
+  }
+  const hashHex = binToHex(sha256.hash(hexToBin(text)));
+  let n = BigInt("0x" + hashHex);
+  const m = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140");
+  n = n % m;
+  return n.toString(16);
 }
 
 export function textToUtf8Hex(text: string): string {
-	const encoder = new TextEncoder();
-	return binToHex(encoder.encode(text));
+  const encoder = new TextEncoder();
+  return binToHex(encoder.encode(text));
 }
-	
-export function wifToPrivateKey(secret: string): Uint8Array {
-    let wifResult = decodePrivateKeyWif(secret);
 
-    if (typeof wifResult === "string") {
-      throw Error(wifResult as string);
-    }
-    let resultData: PrivateKeyI = wifResult as PrivateKeyI;
-    return resultData.privateKey;
+export function wifToPrivateKey(secret: string): Uint8Array {
+  let wifResult = decodePrivateKeyWif(secret);
+
+  if (typeof wifResult === "string") {
+    throw Error(wifResult as string);
+  }
+  let resultData: PrivateKeyI = wifResult as PrivateKeyI;
+  return resultData.privateKey;
 }
 
 export function deriveCashaddr(
@@ -70,16 +77,16 @@ export function deriveCashaddr(
 }
 
 export interface SourceOutput {
-    valueSatoshis: bigint;
-    cashAddress?: string;
-    token?: {
-        amount: bigint;
-        category: Uint8Array;
-        nft?: {
-            capability: "none" | "mutable" | "minting";
-            commitment: Uint8Array;
-        };
-    }
+  valueSatoshis: bigint;
+  cashAddress?: string;
+  token?: {
+    amount: bigint;
+    category: Uint8Array;
+    nft?: {
+      capability: "none" | "mutable" | "minting";
+      commitment: Uint8Array;
+    };
+  }
 }
 
 export function extractOutputs(
@@ -87,9 +94,9 @@ export function extractOutputs(
   network: "bitcoincash" | "bchtest" | "bchreg"
 ): SourceOutput[] {
   let outputs: SourceOutput[] = [];
-  for(const out of tx.outputs) {
+  for (const out of tx.outputs) {
     let result = lockingBytecodeToCashAddress(out.lockingBytecode, network);
-    if(typeof result !== "string") {
+    if (typeof result !== "string") {
       result = disassembleBytecodeBCH(out.lockingBytecode)
     }
     const entry: SourceOutput = {
@@ -100,6 +107,23 @@ export function extractOutputs(
     outputs.push(entry);
   }
   return outputs;
+}
+
+export function signTransactionForArg(
+  decoded: TransactionCommon,
+  sourceOutputs: LibauthOutput[],
+  i: number,
+  bytecode: Uint8Array,
+  signingKey: Uint8Array
+): Uint8Array[] {
+  const template = new SignatureTemplate(signingKey);
+
+  const hashtype = template.getHashType();
+  const preimage = createSighashPreimage(decoded, sourceOutputs, i, bytecode, hashtype);
+  const sighash = hash256(preimage);
+
+  const signature = template.generateSignature(sighash);
+  return signature
 }
 
 export function signUnsignedTransaction(
@@ -148,7 +172,7 @@ export function signUnsignedTransaction(
 }
 
 export function pack(tx: any) {
-    return base64EncodeURL(encode(tx))
+  return base64EncodeURL(encode(tx))
 }
 
 export function unPack(tx: string) {

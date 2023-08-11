@@ -509,6 +509,50 @@ function _isNativeReflectConstruct() {
     return false;
   }
 }
+function _construct(Parent, args, Class) {
+  if (_isNativeReflectConstruct()) {
+    _construct = Reflect.construct.bind();
+  } else {
+    _construct = function _construct(Parent, args, Class) {
+      var a = [null];
+      a.push.apply(a, args);
+      var Constructor = Function.bind.apply(Parent, a);
+      var instance = new Constructor();
+      if (Class) _setPrototypeOf(instance, Class.prototype);
+      return instance;
+    };
+  }
+  return _construct.apply(null, arguments);
+}
+function _isNativeFunction(fn) {
+  return Function.toString.call(fn).indexOf("[native code]") !== -1;
+}
+function _wrapNativeSuper(Class) {
+  var _cache = typeof Map === "function" ? new Map() : undefined;
+  _wrapNativeSuper = function _wrapNativeSuper(Class) {
+    if (Class === null || !_isNativeFunction(Class)) return Class;
+    if (typeof Class !== "function") {
+      throw new TypeError("Super expression must either be null or a function");
+    }
+    if (typeof _cache !== "undefined") {
+      if (_cache.has(Class)) return _cache.get(Class);
+      _cache.set(Class, Wrapper);
+    }
+    function Wrapper() {
+      return _construct(Class, arguments, _getPrototypeOf(this).constructor);
+    }
+    Wrapper.prototype = Object.create(Class.prototype, {
+      constructor: {
+        value: Wrapper,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+    return _setPrototypeOf(Wrapper, Class);
+  };
+  return _wrapNativeSuper(Class);
+}
 function _assertThisInitialized(self) {
   if (self === void 0) {
     throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
@@ -642,6 +686,10 @@ function _toPropertyKey(arg) {
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
+function getDefaultExportFromCjs (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
+
 function getAugmentedNamespace(n) {
   if (n.__esModule) return n;
   var f = n.default;
@@ -670,7 +718,7 @@ function getAugmentedNamespace(n) {
 	return a;
 }
 
-var utils = {};
+var utils$b = {};
 
 var BaseConversionError;
 (function (BaseConversionError) {
@@ -3066,9 +3114,9 @@ var instantiateSha512 = /*#__PURE__*/function () {
 var _await$Promise$all = await Promise.all([instantiateSha1(), instantiateSha256(), instantiateSha512(), instantiateRipemd160(), instantiateSecp256k1()]),
   _await$Promise$all2 = _slicedToArray(_await$Promise$all, 5),
   sha1$1 = _await$Promise$all2[0],
-  sha256$1 = _await$Promise$all2[1],
-  sha512$1 = _await$Promise$all2[2],
-  ripemd160$1 = _await$Promise$all2[3],
+  sha256$2 = _await$Promise$all2[1],
+  sha512$2 = _await$Promise$all2[2],
+  ripemd160$2 = _await$Promise$all2[3],
   secp256k1 = _await$Promise$all2[4];
 
 /**
@@ -3080,10 +3128,10 @@ var _await$Promise$all = await Promise.all([instantiateSha1(), instantiateSha256
  *
  * @param payload - the Uint8Array to hash
  */
-var hash160 = function hash160(payload) {
+var hash160$1 = function hash160(payload) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    ripemd160: ripemd160$1,
-    sha256: sha256$1
+    ripemd160: ripemd160$2,
+    sha256: sha256$2
   };
   return crypto.ripemd160.hash(crypto.sha256.hash(payload));
 };
@@ -3096,8 +3144,8 @@ var hash160 = function hash160(payload) {
  *
  * @param payload - the Uint8Array to hash
  */
-var hash256 = function hash256(payload) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+var hash256$1 = function hash256(payload) {
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   return sha256.hash(sha256.hash(payload));
 };
 
@@ -3145,7 +3193,7 @@ var sha256BlockByteLength = 64;
  * @param sha256 - an implementation of Sha256
  */
 var hmacSha256 = function hmacSha256(secret, message) {
-  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$1;
+  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$2;
   return instantiateHmacFunction(sha256.hash, sha256BlockByteLength)(secret, message);
 };
 var sha512BlockByteLength = 128;
@@ -3162,7 +3210,7 @@ var sha512BlockByteLength = 128;
  * @param sha512 - an implementation of Sha512
  */
 var hmacSha512 = function hmacSha512(secret, message) {
-  var sha512 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha512$1;
+  var sha512 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha512$2;
   return instantiateHmacFunction(sha512.hash, sha512BlockByteLength)(secret, message);
 };
 
@@ -3261,10 +3309,10 @@ var Base58AddressFormatVersion;
  * implementation)
  */
 var encodeBase58AddressFormat = function encodeBase58AddressFormat(version, payload) {
-  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$1;
+  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$2;
   var checksumBytes = 4;
   var content = Uint8Array.from([version].concat(_toConsumableArray(payload)));
-  var checksum = hash256(content, sha256).slice(0, checksumBytes);
+  var checksum = hash256$1(content, sha256).slice(0, checksumBytes);
   var bin = flattenBinArray([content, checksum]);
   return binToBase58(bin);
 };
@@ -3286,7 +3334,7 @@ var encodeBase58AddressFormat = function encodeBase58AddressFormat(version, payl
  * implementation)
  */
 var encodeBase58Address = function encodeBase58Address(type, payload) {
-  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$1;
+  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$2;
   return encodeBase58AddressFormat({
     p2pkh: Base58AddressFormatVersion.p2pkh,
     p2pkhCopayBCH: Base58AddressFormatVersion.p2pkhCopayBCH,
@@ -3315,7 +3363,7 @@ var Base58AddressError;
  * implementation)
  */
 var decodeBase58AddressFormat = function decodeBase58AddressFormat(address) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   var checksumBytes = 4;
   var bin = base58ToBin(address);
   if (bin === BaseConversionError.unknownCharacter) {
@@ -3359,7 +3407,7 @@ var decodeBase58AddressFormat = function decodeBase58AddressFormat(address) {
  * implementation)
  */
 var decodeBase58Address$1 = function decodeBase58Address(address) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   var decoded = decodeBase58AddressFormat(address, sha256);
   if (typeof decoded === 'string') return decoded;
   if (![Base58AddressFormatVersion.p2pkh, Base58AddressFormatVersion.p2sh20, Base58AddressFormatVersion.p2pkhTestnet, Base58AddressFormatVersion.p2sh20Testnet, Base58AddressFormatVersion.p2pkhCopayBCH, Base58AddressFormatVersion.p2sh20CopayBCH].includes(decoded.version)) {
@@ -4544,7 +4592,7 @@ var cashAddressToLockingBytecode = function cashAddressToLockingBytecode(address
  */
 var lockingBytecodeToBase58Address = function lockingBytecodeToBase58Address(bytecode) {
   var network = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'mainnet';
-  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$1;
+  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$2;
   var contents = lockingBytecodeToAddressContents(bytecode);
   if (contents.type === LockingBytecodeType.p2pkh) {
     return encodeBase58AddressFormat({
@@ -4571,7 +4619,7 @@ var lockingBytecodeToBase58Address = function lockingBytecodeToBase58Address(byt
  * @param address - the CashAddress to convert
  */
 var base58AddressToLockingBytecode = function base58AddressToLockingBytecode(address) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   var decoded = decodeBase58Address$1(address, sha256);
   if (typeof decoded === 'string') return decoded;
   return {
@@ -4676,7 +4724,7 @@ var halfHmacSha512Length = 32;
  */
 var deriveHdPrivateNodeFromSeed = function deriveHdPrivateNodeFromSeed(seed, assumeValidity) {
   var crypto = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {
-    sha512: sha512$1
+    sha512: sha512$2
   };
   var mac = hmacSha512(bip32HmacSha512Key, seed, crypto.sha512);
   var privateKey = mac.slice(0, halfHmacSha512Length);
@@ -4713,9 +4761,9 @@ var deriveHdPrivateNodeFromSeed = function deriveHdPrivateNodeFromSeed(seed, ass
  */
 var deriveHdPrivateNodeIdentifier = function deriveHdPrivateNodeIdentifier(hdPrivateNode) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    ripemd160: ripemd160$1,
+    ripemd160: ripemd160$2,
     secp256k1: secp256k1,
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var publicKey = crypto.secp256k1.derivePublicKeyCompressed(hdPrivateNode.privateKey);
   if (typeof publicKey === 'string') return publicKey;
@@ -4732,8 +4780,8 @@ var deriveHdPrivateNodeIdentifier = function deriveHdPrivateNodeIdentifier(hdPri
  */
 var deriveHdPublicNodeIdentifier = function deriveHdPublicNodeIdentifier(node) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    ripemd160: ripemd160$1,
-    sha256: sha256$1
+    ripemd160: ripemd160$2,
+    sha256: sha256$2
   };
   return crypto.ripemd160.hash(crypto.sha256.hash(node.publicKey));
 };
@@ -4804,7 +4852,7 @@ var HdKeyDecodingError;
 // eslint-disable-next-line complexity
 var decodeHdKey = function decodeHdKey(hdKey) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var decoded = base58ToBin(hdKey);
   if (decoded === BaseConversionError.unknownCharacter) return HdKeyDecodingError.unknownCharacter;
@@ -4883,7 +4931,7 @@ var decodeHdKey = function decodeHdKey(hdKey) {
  */
 var decodeHdPrivateKey = function decodeHdPrivateKey(hdPrivateKey) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var decoded = decodeHdKey(hdPrivateKey, crypto);
   if (typeof decoded === 'string') return decoded;
@@ -4916,7 +4964,7 @@ var decodeHdPrivateKey = function decodeHdPrivateKey(hdPrivateKey) {
  */
 var decodeHdPublicKey = function decodeHdPublicKey(hdPublicKey) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var decoded = decodeHdKey(hdPublicKey, crypto);
   if (typeof decoded === 'string') return decoded;
@@ -4940,7 +4988,7 @@ var decodeHdPublicKey = function decodeHdPublicKey(hdPublicKey) {
  */
 var hdPrivateKeyToIdentifier = function hdPrivateKeyToIdentifier(hdPrivateKey) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var privateKeyParams = decodeHdPrivateKey(hdPrivateKey, crypto);
   if (typeof privateKeyParams === 'string') {
@@ -4954,7 +5002,7 @@ var hdPrivateKeyToIdentifier = function hdPrivateKeyToIdentifier(hdPrivateKey) {
  */
 var hdPublicKeyToIdentifier = function hdPublicKeyToIdentifier(hdPublicKey) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var publicKeyParams = decodeHdPublicKey(hdPublicKey, crypto);
   if (typeof publicKeyParams === 'string') {
@@ -4973,7 +5021,7 @@ var hdPublicKeyToIdentifier = function hdPublicKeyToIdentifier(hdPublicKey) {
  */
 var encodeHdPrivateKey = function encodeHdPrivateKey(keyParameters) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var version = numberToBinUint32BE(keyParameters.network === 'mainnet' ? HdKeyVersion.mainnetPrivateKey : HdKeyVersion.testnetPrivateKey);
   var depth = Uint8Array.of(keyParameters.node.depth);
@@ -4994,7 +5042,7 @@ var encodeHdPrivateKey = function encodeHdPrivateKey(keyParameters) {
  */
 var encodeHdPublicKey = function encodeHdPublicKey(keyParameters) {
   var crypto = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-    sha256: sha256$1
+    sha256: sha256$2
   };
   var version = numberToBinUint32BE(keyParameters.network === 'mainnet' ? HdKeyVersion.mainnetPublicKey : HdKeyVersion.testnetPublicKey);
   var depth = Uint8Array.of(keyParameters.node.depth);
@@ -5070,10 +5118,10 @@ var HdNodeDerivationError;
 // eslint-disable-next-line complexity
 var deriveHdPrivateNodeChild = function deriveHdPrivateNodeChild(node, index) {
   var crypto = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {
-    ripemd160: ripemd160$1,
+    ripemd160: ripemd160$2,
     secp256k1: secp256k1,
-    sha256: sha256$1,
-    sha512: sha512$1
+    sha256: sha256$2,
+    sha512: sha512$2
   };
   var maximumIndex = 0xffffffff;
   if (index > maximumIndex) {
@@ -5135,10 +5183,10 @@ var deriveHdPrivateNodeChild = function deriveHdPrivateNodeChild(node, index) {
  */
 var deriveHdPublicNodeChild = function deriveHdPublicNodeChild(node, index) {
   var crypto = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {
-    ripemd160: ripemd160$1,
+    ripemd160: ripemd160$2,
     secp256k1: secp256k1,
-    sha256: sha256$1,
-    sha512: sha512$1
+    sha256: sha256$2,
+    sha512: sha512$2
   };
   var hardenedIndexOffset = 0x80000000;
   if (index >= hardenedIndexOffset) {
@@ -5209,10 +5257,10 @@ var deriveHdPublicNodeChild = function deriveHdPublicNodeChild(node, index) {
 // eslint-disable-next-line complexity
 var deriveHdPath = function deriveHdPath(node, path) {
   var crypto = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {
-    ripemd160: ripemd160$1,
+    ripemd160: ripemd160$2,
     secp256k1: secp256k1,
-    sha256: sha256$1,
-    sha512: sha512$1
+    sha256: sha256$2,
+    sha512: sha512$2
   };
   var validDerivationPath = /^[Mm](?:\/[0-9]+'?)*$/;
   if (!validDerivationPath.test(path)) {
@@ -5272,7 +5320,7 @@ var HdNodeCrackingError;
  */
 var crackHdPrivateNodeFromHdPublicNodeAndChildPrivateNode = function crackHdPrivateNodeFromHdPublicNodeAndChildPrivateNode(parentPublicNode, childPrivateNode) {
   var crypto = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {
-    sha512: sha512$1
+    sha512: sha512$2
   };
   var hardenedIndexOffset = 0x80000000;
   if (childPrivateNode.childIndex >= hardenedIndexOffset) {
@@ -5329,7 +5377,7 @@ var WalletImportFormatError;
  * @param sha256 - an implementation of sha256
  */
 var encodePrivateKeyWif = function encodePrivateKeyWif(privateKey, type) {
-  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$1;
+  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$2;
   var compressedByte = 0x01;
   var mainnet = type === 'mainnet' || type === 'mainnetUncompressed';
   var compressed = type === 'mainnet' || type === 'testnet';
@@ -5345,7 +5393,7 @@ var encodePrivateKeyWif = function encodePrivateKeyWif(privateKey, type) {
  */
 // eslint-disable-next-line complexity
 var decodePrivateKeyWif = function decodePrivateKeyWif(wifKey) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   var compressedPayloadLength = 33;
   var decoded = decodeBase58AddressFormat(wifKey, sha256);
   if (typeof decoded === 'string') return decoded;
@@ -6260,8 +6308,8 @@ var cloneTransactionCommon = function cloneTransactionCommon(transaction) {
  * @param sha256 - an implementation of sha256
  */
 var hashTransactionP2pOrder = function hashTransactionP2pOrder(transaction) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
-  return hash256(transaction, sha256);
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
+  return hash256$1(transaction, sha256);
 };
 /**
  * Compute a transaction hash (A.K.A. "transaction ID" or "TXID") from an
@@ -6276,7 +6324,7 @@ var hashTransactionP2pOrder = function hashTransactionP2pOrder(transaction) {
  * @param sha256 - an implementation of sha256
  */
 var hashTransactionUiOrder = function hashTransactionUiOrder(transaction) {
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   return hashTransactionP2pOrder(transaction, sha256).reverse();
 };
 /**
@@ -6400,8 +6448,8 @@ var emptyHash = function emptyHash() {
 var hashPrevouts = function hashPrevouts(_ref) {
   var signingSerializationType = _ref.signingSerializationType,
     transactionOutpoints = _ref.transactionOutpoints;
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
-  return shouldSerializeSingleInput(signingSerializationType) ? emptyHash() : hash256(transactionOutpoints, sha256);
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
+  return shouldSerializeSingleInput(signingSerializationType) ? emptyHash() : hash256$1(transactionOutpoints, sha256);
 };
 /**
  * Return the proper `hashUtxos` value for a given a signing serialization
@@ -6410,8 +6458,8 @@ var hashPrevouts = function hashPrevouts(_ref) {
 var hashUtxos = function hashUtxos(_ref2) {
   var signingSerializationType = _ref2.signingSerializationType,
     transactionUtxos = _ref2.transactionUtxos;
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
-  return shouldSerializeUtxos(signingSerializationType) ? hash256(transactionUtxos, sha256) : Uint8Array.of();
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
+  return shouldSerializeUtxos(signingSerializationType) ? hash256$1(transactionUtxos, sha256) : Uint8Array.of();
 };
 /**
  * Return the proper `hashSequence` value for a given a signing serialization
@@ -6420,8 +6468,8 @@ var hashUtxos = function hashUtxos(_ref2) {
 var hashSequence = function hashSequence(_ref3) {
   var signingSerializationType = _ref3.signingSerializationType,
     transactionSequenceNumbers = _ref3.transactionSequenceNumbers;
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
-  return !shouldSerializeSingleInput(signingSerializationType) && !shouldSerializeCorrespondingOutput(signingSerializationType) && !shouldSerializeNoOutputs(signingSerializationType) ? hash256(transactionSequenceNumbers, sha256) : emptyHash();
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
+  return !shouldSerializeSingleInput(signingSerializationType) && !shouldSerializeCorrespondingOutput(signingSerializationType) && !shouldSerializeNoOutputs(signingSerializationType) ? hash256$1(transactionSequenceNumbers, sha256) : emptyHash();
 };
 /**
  * Return the proper `hashOutputs` value for a given a signing serialization
@@ -6431,8 +6479,8 @@ var hashOutputs = function hashOutputs(_ref4) {
   var correspondingOutput = _ref4.correspondingOutput,
     signingSerializationType = _ref4.signingSerializationType,
     transactionOutputs = _ref4.transactionOutputs;
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
-  return !shouldSerializeCorrespondingOutput(signingSerializationType) && !shouldSerializeNoOutputs(signingSerializationType) ? hash256(transactionOutputs, sha256) : shouldSerializeCorrespondingOutput(signingSerializationType) ? correspondingOutput === undefined ? emptyHash() : hash256(correspondingOutput, sha256) : emptyHash();
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
+  return !shouldSerializeCorrespondingOutput(signingSerializationType) && !shouldSerializeNoOutputs(signingSerializationType) ? hash256$1(transactionOutputs, sha256) : shouldSerializeCorrespondingOutput(signingSerializationType) ? correspondingOutput === undefined ? emptyHash() : hash256$1(correspondingOutput, sha256) : emptyHash();
 };
 /**
  * Encode the signature-protected properties of a transaction following the
@@ -6459,7 +6507,7 @@ var encodeSigningSerializationBCH = function encodeSigningSerializationBCH(_ref5
     transactionSequenceNumbers = _ref5.transactionSequenceNumbers,
     transactionUtxos = _ref5.transactionUtxos,
     version = _ref5.version;
-  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$1;
+  var sha256 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : sha256$2;
   return flattenBinArray([numberToBinUint32LE(version), hashPrevouts({
     signingSerializationType: signingSerializationType,
     transactionOutpoints: transactionOutpoints
@@ -6517,7 +6565,7 @@ var generateSigningSerializationComponentsBCH = function generateSigningSerializ
 var generateSigningSerializationBCH = function generateSigningSerializationBCH(context, _ref6) {
   var coveredBytecode = _ref6.coveredBytecode,
     signingSerializationType = _ref6.signingSerializationType;
-  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$1;
+  var sha256 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : sha256$2;
   return encodeSigningSerializationBCH(_objectSpread2(_objectSpread2({}, generateSigningSerializationComponentsBCH(context)), {}, {
     coveredBytecode: coveredBytecode,
     signingSerializationType: signingSerializationType
@@ -8554,7 +8602,7 @@ var decodeBitcoinSignature = function decodeBitcoinSignature(encodedSignature) {
 
 var opRipemd160 = function opRipemd160() {
   var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      ripemd160: ripemd160$1
+      ripemd160: ripemd160$2
     },
     ripemd160 = _ref.ripemd160;
   return function (state) {
@@ -8580,7 +8628,7 @@ var opSha1 = function opSha1() {
 };
 var opSha256 = function opSha256() {
   var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      sha256: sha256$1
+      sha256: sha256$2
     },
     sha256 = _ref7.sha256;
   return function (state) {
@@ -8593,8 +8641,8 @@ var opSha256 = function opSha256() {
 };
 var opHash160 = function opHash160() {
   var _ref10 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      ripemd160: ripemd160$1,
-      sha256: sha256$1
+      ripemd160: ripemd160$2,
+      sha256: sha256$2
     },
     ripemd160 = _ref10.ripemd160,
     sha256 = _ref10.sha256;
@@ -8608,14 +8656,14 @@ var opHash160 = function opHash160() {
 };
 var opHash256 = function opHash256() {
   var _ref13 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      sha256: sha256$1
+      sha256: sha256$2
     },
     sha256 = _ref13.sha256;
   return function (state) {
     return useOneStackItem(state, function (nextState, _ref14) {
       var _ref15 = _slicedToArray(_ref14, 1),
         value = _ref15[0];
-      return pushToStack(nextState, hash256(value, sha256));
+      return pushToStack(nextState, hash256$1(value, sha256));
     });
   };
 };
@@ -8627,7 +8675,7 @@ var opCodeSeparator = function opCodeSeparator(state) {
 var opCheckSig = function opCheckSig() {
   var _ref16 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref16.secp256k1,
     sha256 = _ref16.sha256;
@@ -8652,7 +8700,7 @@ var opCheckSig = function opCheckSig() {
           coveredBytecode: coveredBytecode,
           signingSerializationType: signingSerializationType
         }, sha256);
-        var digest = hash256(serialization, sha256);
+        var digest = hash256$1(serialization, sha256);
         // eslint-disable-next-line functional/no-expression-statement, functional/immutable-data
         state.signedMessages.push({
           digest: digest,
@@ -8669,7 +8717,7 @@ var opCheckSig = function opCheckSig() {
 var opCheckMultiSig = function opCheckMultiSig() {
   var _ref19 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref19.secp256k1,
     sha256 = _ref19.sha256;
@@ -8730,7 +8778,7 @@ var opCheckMultiSig = function opCheckMultiSig() {
               coveredBytecode: coveredBytecode,
               signingSerializationType: signingSerializationType
             }, sha256);
-            var digest = hash256(serialization, sha256);
+            var digest = hash256$1(serialization, sha256);
             // eslint-disable-next-line functional/no-expression-statement, functional/immutable-data
             finalState.signedMessages.push({
               digest: digest,
@@ -8764,7 +8812,7 @@ var opCheckMultiSig = function opCheckMultiSig() {
 var opCheckSigVerify = function opCheckSigVerify() {
   var _ref22 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref22.secp256k1,
     sha256 = _ref22.sha256;
@@ -8823,7 +8871,7 @@ var opCheckDataSig = function opCheckDataSig(_ref24) {
 var opCheckDataSigVerify = function opCheckDataSigVerify() {
   var _ref27 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref27.secp256k1,
     sha256 = _ref27.sha256;
@@ -9429,7 +9477,7 @@ var SigningSerializationTypesBCH2023 = [].concat(_toConsumableArray(SigningSeria
 var opCheckSigBCH2023 = function opCheckSigBCH2023() {
   var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref.secp256k1,
     sha256 = _ref.sha256;
@@ -9454,7 +9502,7 @@ var opCheckSigBCH2023 = function opCheckSigBCH2023() {
           coveredBytecode: coveredBytecode,
           signingSerializationType: signingSerializationType
         }, sha256);
-        var digest = hash256(serialization, sha256);
+        var digest = hash256$1(serialization, sha256);
         // eslint-disable-next-line functional/no-expression-statement, functional/immutable-data
         state.signedMessages.push({
           digest: digest,
@@ -9471,7 +9519,7 @@ var opCheckSigBCH2023 = function opCheckSigBCH2023() {
 var opCheckMultiSigBCH2023 = function opCheckMultiSigBCH2023() {
   var _ref4 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref4.secp256k1,
     sha256 = _ref4.sha256;
@@ -9532,7 +9580,7 @@ var opCheckMultiSigBCH2023 = function opCheckMultiSigBCH2023() {
               coveredBytecode: coveredBytecode,
               signingSerializationType: signingSerializationType
             }, sha256);
-            var digest = hash256(serialization, sha256);
+            var digest = hash256$1(serialization, sha256);
             // eslint-disable-next-line functional/no-expression-statement, functional/immutable-data
             finalState.signedMessages.push({
               digest: digest,
@@ -9566,7 +9614,7 @@ var opCheckMultiSigBCH2023 = function opCheckMultiSigBCH2023() {
 var opCheckSigVerifyBCH2023 = function opCheckSigVerifyBCH2023() {
   var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref7.secp256k1,
     sha256 = _ref7.sha256;
@@ -10074,10 +10122,10 @@ var createInstructionSetBCH2023 = function createInstructionSetBCH2023() {
   var _objectSpread2$1, _objectSpread3, _ref2, _ref3, _objectSpread4;
   var standard = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
   var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-      ripemd160: ripemd160$1,
+      ripemd160: ripemd160$2,
       secp256k1: secp256k1,
       sha1: sha1$1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     ripemd160 = _ref.ripemd160,
     secp256k1$1 = _ref.secp256k1,
@@ -10483,10 +10531,10 @@ var createInstructionSetBCH2022 = function createInstructionSetBCH2022() {
   var _objectSpread2$1, _objectSpread3, _ref2, _ref3, _objectSpread4;
   var standard = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
   var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-      ripemd160: ripemd160$1,
+      ripemd160: ripemd160$2,
       secp256k1: secp256k1,
       sha1: sha1$1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     ripemd160 = _ref.ripemd160,
     secp256k1$1 = _ref.secp256k1,
@@ -11987,7 +12035,7 @@ var incrementHashDigestIterations = function incrementHashDigestIterations(state
 };
 var opRipemd160ChipLimits = function opRipemd160ChipLimits() {
   var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      ripemd160: ripemd160$1
+      ripemd160: ripemd160$2
     },
     ripemd160 = _ref.ripemd160;
   return function (state) {
@@ -12017,7 +12065,7 @@ var opSha1ChipLimits = function opSha1ChipLimits() {
 };
 var opSha256ChipLimits = function opSha256ChipLimits() {
   var _ref7 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      sha256: sha256$1
+      sha256: sha256$2
     },
     sha256 = _ref7.sha256;
   return function (state) {
@@ -12032,8 +12080,8 @@ var opSha256ChipLimits = function opSha256ChipLimits() {
 };
 var opHash160ChipLimits = function opHash160ChipLimits() {
   var _ref10 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      ripemd160: ripemd160$1,
-      sha256: sha256$1
+      ripemd160: ripemd160$2,
+      sha256: sha256$2
     },
     ripemd160 = _ref10.ripemd160,
     sha256 = _ref10.sha256;
@@ -12049,7 +12097,7 @@ var opHash160ChipLimits = function opHash160ChipLimits() {
 };
 var opHash256ChipLimits = function opHash256ChipLimits() {
   var _ref13 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
-      sha256: sha256$1
+      sha256: sha256$2
     },
     sha256 = _ref13.sha256;
   return function (state) {
@@ -12057,7 +12105,7 @@ var opHash256ChipLimits = function opHash256ChipLimits() {
       var _ref15 = _slicedToArray(_ref14, 1),
         value = _ref15[0];
       return incrementHashDigestIterations(nextState, value.length, function (finalState) {
-        return pushToStack(finalState, hash256(value, sha256));
+        return pushToStack(finalState, hash256$1(value, sha256));
       });
     });
   };
@@ -12065,7 +12113,7 @@ var opHash256ChipLimits = function opHash256ChipLimits() {
 var opCheckSigChipLimits = function opCheckSigChipLimits() {
   var _ref16 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref16.secp256k1,
     sha256 = _ref16.sha256;
@@ -12094,7 +12142,7 @@ var opCheckSigChipLimits = function opCheckSigChipLimits() {
         if (requiredTotalIterations > ConsensusBCHCHIPs.maximumHashDigestIterations) {
           return applyError(state, AuthenticationErrorBCHCHIPs.excessiveHashing, "Required cumulative iterations: ".concat(requiredTotalIterations));
         }
-        var digest = hash256(serialization, sha256);
+        var digest = hash256$1(serialization, sha256);
         // eslint-disable-next-line functional/no-expression-statement, functional/immutable-data
         state.signedMessages.push({
           digest: digest,
@@ -12111,7 +12159,7 @@ var opCheckSigChipLimits = function opCheckSigChipLimits() {
 var opCheckMultiSigChipLimits = function opCheckMultiSigChipLimits() {
   var _ref19 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref19.secp256k1,
     sha256 = _ref19.sha256;
@@ -12174,7 +12222,7 @@ var opCheckMultiSigChipLimits = function opCheckMultiSigChipLimits() {
             if (requiredTotalIterations > ConsensusBCHCHIPs.maximumHashDigestIterations) {
               return applyError(state, AuthenticationErrorBCHCHIPs.excessiveHashing, "Required cumulative iterations: ".concat(requiredTotalIterations));
             }
-            var digest = hash256(serialization, sha256);
+            var digest = hash256$1(serialization, sha256);
             // eslint-disable-next-line functional/no-expression-statement, functional/immutable-data
             finalState.signedMessages.push({
               digest: digest,
@@ -12208,7 +12256,7 @@ var opCheckMultiSigChipLimits = function opCheckMultiSigChipLimits() {
 var opCheckSigVerifyChipLimits = function opCheckSigVerifyChipLimits() {
   var _ref22 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref22.secp256k1,
     sha256 = _ref22.sha256;
@@ -12262,7 +12310,7 @@ var opCheckDataSigChipLimits = function opCheckDataSigChipLimits(_ref24) {
 var opCheckDataSigVerifyChipLimits = function opCheckDataSigVerifyChipLimits() {
   var _ref27 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {
       secp256k1: secp256k1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     secp256k1$1 = _ref27.secp256k1,
     sha256 = _ref27.sha256;
@@ -12881,10 +12929,10 @@ var createInstructionSetBCHCHIPs = function createInstructionSetBCHCHIPs() {
   var _objectSpread2$1, _ref2, _ref3, _objectSpread3;
   var standard = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
   var _ref = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-      ripemd160: ripemd160$1,
+      ripemd160: ripemd160$2,
       secp256k1: secp256k1,
       sha1: sha1$1,
-      sha256: sha256$1
+      sha256: sha256$2
     },
     ripemd160 = _ref.ripemd160,
     secp256k1$1 = _ref.secp256k1,
@@ -21442,10 +21490,10 @@ var createCompilerCommon = function createCompilerCommon(scriptsAndOverrides) {
     createAuthenticationProgram: createAuthenticationProgramEvaluationCommon,
     opcodes: generateBytecodeMap(Opcodes),
     operations: compilerOperationsCommon,
-    ripemd160: ripemd160$1,
+    ripemd160: ripemd160$2,
     secp256k1: secp256k1,
-    sha256: sha256$1,
-    sha512: sha512$1
+    sha256: sha256$2,
+    sha512: sha512$2
   }), scriptsAndOverrides));
 };
 /**
@@ -21767,7 +21815,7 @@ var compilerOperationHelperComputeSignatureBCH = function compilerOperationHelpe
     coveredBytecode: coveredBytecode,
     signingSerializationType: signingSerializationType
   }, sha256);
-  var digest = hash256(serialization, sha256);
+  var digest = hash256$1(serialization, sha256);
   var bitcoinEncodedSignature = Uint8Array.from([].concat(_toConsumableArray(sign(privateKey, digest)), _toConsumableArray(signingSerializationType)));
   return {
     bytecode: bitcoinEncodedSignature,
@@ -22109,10 +22157,10 @@ var createCompilerBCH = function createCompilerBCH(configuration) {
     createAuthenticationProgram: createAuthenticationProgramEvaluationCommon,
     opcodes: generateBytecodeMap(OpcodesBCHCHIPs),
     operations: compilerOperationsBCH,
-    ripemd160: ripemd160$1,
+    ripemd160: ripemd160$2,
     secp256k1: secp256k1,
-    sha256: sha256$1,
-    sha512: sha512$1,
+    sha256: sha256$2,
+    sha512: sha512$2,
     vm: configuration.vm === undefined ? createVirtualMachineBCH() : configuration.vm
   }), configuration));
 };
@@ -22975,7 +23023,7 @@ var vmbTestDefinitionToVmbTests = function vmbTestDefinitionToVmbTests(testDefin
     var encodedTx = encodeTransaction(result.scenario.program.transaction);
     var encodedSourceOutputs = encodeTransactionOutputs(result.scenario.program.sourceOutputs);
     var shortId = encodeBech32(regroupBits({
-      bin: sha256$1.hash(flattenBinArray([encodedTx, encodedSourceOutputs])),
+      bin: sha256$2.hash(flattenBinArray([encodedTx, encodedSourceOutputs])),
       resultWordLength: 5,
       sourceWordLength: 8
     })).slice(0, shortIdLength);
@@ -23104,13 +23152,13 @@ var build = /*#__PURE__*/Object.freeze({
   sha1Base64Bytes: sha1Base64Bytes,
   sha256Base64Bytes: sha256Base64Bytes,
   sha512Base64Bytes: sha512Base64Bytes,
-  hash160: hash160,
-  hash256: hash256,
-  ripemd160: ripemd160$1,
+  hash160: hash160$1,
+  hash256: hash256$1,
+  ripemd160: ripemd160$2,
   secp256k1: secp256k1,
   sha1: sha1$1,
-  sha256: sha256$1,
-  sha512: sha512$1,
+  sha256: sha256$2,
+  sha512: sha512$2,
   instantiateHmacFunction: instantiateHmacFunction,
   hmacSha256: hmacSha256,
   hmacSha512: hmacSha512,
@@ -23665,6 +23713,68 @@ var build = /*#__PURE__*/Object.freeze({
 
 var require$$0$2 = /*@__PURE__*/getAugmentedNamespace(build);
 
+var fs = {};
+
+function importArtifact(artifactFile) {
+  return JSON.parse(fs.readFileSync(artifactFile, {
+    encoding: 'utf-8'
+  }));
+}
+function exportArtifact(artifact, targetFile) {
+  var jsonString = JSON.stringify(artifact, null, 2);
+  fs.writeFileSync(targetFile, jsonString);
+}
+
+function encodeBool(bool) {
+  return bool ? encodeInt(1n) : encodeInt(0n);
+}
+function decodeBool(encodedBool) {
+  // Any encoding of 0 is false, else true
+  for (var i = 0; i < encodedBool.byteLength; i += 1) {
+    if (encodedBool[i] !== 0) {
+      // Can be negative zero
+      if (i === encodedBool.byteLength - 1 && encodedBool[i] === 0x80) return false;
+      return true;
+    }
+  }
+  return false;
+}
+function encodeInt(int) {
+  return bigIntToVmNumber(int);
+}
+function decodeInt(encodedInt) {
+  var maxLength = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 8;
+  var options = {
+    maximumVmNumberByteLength: maxLength
+  };
+  var result = vmNumberToBigInt(encodedInt, options);
+  if (isVmNumberError(result)) {
+    throw new Error(result);
+  }
+  return result;
+}
+function encodeString(str) {
+  return utf8ToBin(str);
+}
+function decodeString(encodedString) {
+  return binToUtf8(encodedString);
+}
+function placeholder(size) {
+  return new Uint8Array(size).fill(0);
+}
+
+var hash$2 = {};
+
+var utils$a = {};
+
+var minimalisticAssert = assert$5;
+function assert$5(val, msg) {
+  if (!val) throw new Error(msg || 'Assertion failed');
+}
+assert$5.equal = function assertEqual(l, r, msg) {
+  if (l != r) throw new Error(msg || 'Assertion failed: ' + l + ' != ' + r);
+};
+
 var inherits_browser = {exports: {}};
 
 if (typeof Object.create === 'function') {
@@ -23695,6 +23805,1673 @@ if (typeof Object.create === 'function') {
   };
 }
 var inherits_browserExports = inherits_browser.exports;
+
+var assert$4 = minimalisticAssert;
+var inherits$d = inherits_browserExports;
+utils$a.inherits = inherits$d;
+function isSurrogatePair(msg, i) {
+  if ((msg.charCodeAt(i) & 0xFC00) !== 0xD800) {
+    return false;
+  }
+  if (i < 0 || i + 1 >= msg.length) {
+    return false;
+  }
+  return (msg.charCodeAt(i + 1) & 0xFC00) === 0xDC00;
+}
+function toArray(msg, enc) {
+  if (Array.isArray(msg)) return msg.slice();
+  if (!msg) return [];
+  var res = [];
+  if (typeof msg === 'string') {
+    if (!enc) {
+      // Inspired by stringToUtf8ByteArray() in closure-library by Google
+      // https://github.com/google/closure-library/blob/8598d87242af59aac233270742c8984e2b2bdbe0/closure/goog/crypt/crypt.js#L117-L143
+      // Apache License 2.0
+      // https://github.com/google/closure-library/blob/master/LICENSE
+      var p = 0;
+      for (var i = 0; i < msg.length; i++) {
+        var c = msg.charCodeAt(i);
+        if (c < 128) {
+          res[p++] = c;
+        } else if (c < 2048) {
+          res[p++] = c >> 6 | 192;
+          res[p++] = c & 63 | 128;
+        } else if (isSurrogatePair(msg, i)) {
+          c = 0x10000 + ((c & 0x03FF) << 10) + (msg.charCodeAt(++i) & 0x03FF);
+          res[p++] = c >> 18 | 240;
+          res[p++] = c >> 12 & 63 | 128;
+          res[p++] = c >> 6 & 63 | 128;
+          res[p++] = c & 63 | 128;
+        } else {
+          res[p++] = c >> 12 | 224;
+          res[p++] = c >> 6 & 63 | 128;
+          res[p++] = c & 63 | 128;
+        }
+      }
+    } else if (enc === 'hex') {
+      msg = msg.replace(/[^a-z0-9]+/ig, '');
+      if (msg.length % 2 !== 0) msg = '0' + msg;
+      for (i = 0; i < msg.length; i += 2) res.push(parseInt(msg[i] + msg[i + 1], 16));
+    }
+  } else {
+    for (i = 0; i < msg.length; i++) res[i] = msg[i] | 0;
+  }
+  return res;
+}
+utils$a.toArray = toArray;
+function toHex$1(msg) {
+  var res = '';
+  for (var i = 0; i < msg.length; i++) res += zero2(msg[i].toString(16));
+  return res;
+}
+utils$a.toHex = toHex$1;
+function htonl(w) {
+  var res = w >>> 24 | w >>> 8 & 0xff00 | w << 8 & 0xff0000 | (w & 0xff) << 24;
+  return res >>> 0;
+}
+utils$a.htonl = htonl;
+function toHex32(msg, endian) {
+  var res = '';
+  for (var i = 0; i < msg.length; i++) {
+    var w = msg[i];
+    if (endian === 'little') w = htonl(w);
+    res += zero8(w.toString(16));
+  }
+  return res;
+}
+utils$a.toHex32 = toHex32;
+function zero2(word) {
+  if (word.length === 1) return '0' + word;else return word;
+}
+utils$a.zero2 = zero2;
+function zero8(word) {
+  if (word.length === 7) return '0' + word;else if (word.length === 6) return '00' + word;else if (word.length === 5) return '000' + word;else if (word.length === 4) return '0000' + word;else if (word.length === 3) return '00000' + word;else if (word.length === 2) return '000000' + word;else if (word.length === 1) return '0000000' + word;else return word;
+}
+utils$a.zero8 = zero8;
+function join32(msg, start, end, endian) {
+  var len = end - start;
+  assert$4(len % 4 === 0);
+  var res = new Array(len / 4);
+  for (var i = 0, k = start; i < res.length; i++, k += 4) {
+    var w;
+    if (endian === 'big') w = msg[k] << 24 | msg[k + 1] << 16 | msg[k + 2] << 8 | msg[k + 3];else w = msg[k + 3] << 24 | msg[k + 2] << 16 | msg[k + 1] << 8 | msg[k];
+    res[i] = w >>> 0;
+  }
+  return res;
+}
+utils$a.join32 = join32;
+function split32(msg, endian) {
+  var res = new Array(msg.length * 4);
+  for (var i = 0, k = 0; i < msg.length; i++, k += 4) {
+    var m = msg[i];
+    if (endian === 'big') {
+      res[k] = m >>> 24;
+      res[k + 1] = m >>> 16 & 0xff;
+      res[k + 2] = m >>> 8 & 0xff;
+      res[k + 3] = m & 0xff;
+    } else {
+      res[k + 3] = m >>> 24;
+      res[k + 2] = m >>> 16 & 0xff;
+      res[k + 1] = m >>> 8 & 0xff;
+      res[k] = m & 0xff;
+    }
+  }
+  return res;
+}
+utils$a.split32 = split32;
+function rotr32$1(w, b) {
+  return w >>> b | w << 32 - b;
+}
+utils$a.rotr32 = rotr32$1;
+function rotl32$2(w, b) {
+  return w << b | w >>> 32 - b;
+}
+utils$a.rotl32 = rotl32$2;
+function sum32$3(a, b) {
+  return a + b >>> 0;
+}
+utils$a.sum32 = sum32$3;
+function sum32_3$1(a, b, c) {
+  return a + b + c >>> 0;
+}
+utils$a.sum32_3 = sum32_3$1;
+function sum32_4$2(a, b, c, d) {
+  return a + b + c + d >>> 0;
+}
+utils$a.sum32_4 = sum32_4$2;
+function sum32_5$2(a, b, c, d, e) {
+  return a + b + c + d + e >>> 0;
+}
+utils$a.sum32_5 = sum32_5$2;
+function sum64$1(buf, pos, ah, al) {
+  var bh = buf[pos];
+  var bl = buf[pos + 1];
+  var lo = al + bl >>> 0;
+  var hi = (lo < al ? 1 : 0) + ah + bh;
+  buf[pos] = hi >>> 0;
+  buf[pos + 1] = lo;
+}
+utils$a.sum64 = sum64$1;
+function sum64_hi$1(ah, al, bh, bl) {
+  var lo = al + bl >>> 0;
+  var hi = (lo < al ? 1 : 0) + ah + bh;
+  return hi >>> 0;
+}
+utils$a.sum64_hi = sum64_hi$1;
+function sum64_lo$1(ah, al, bh, bl) {
+  var lo = al + bl;
+  return lo >>> 0;
+}
+utils$a.sum64_lo = sum64_lo$1;
+function sum64_4_hi$1(ah, al, bh, bl, ch, cl, dh, dl) {
+  var carry = 0;
+  var lo = al;
+  lo = lo + bl >>> 0;
+  carry += lo < al ? 1 : 0;
+  lo = lo + cl >>> 0;
+  carry += lo < cl ? 1 : 0;
+  lo = lo + dl >>> 0;
+  carry += lo < dl ? 1 : 0;
+  var hi = ah + bh + ch + dh + carry;
+  return hi >>> 0;
+}
+utils$a.sum64_4_hi = sum64_4_hi$1;
+function sum64_4_lo$1(ah, al, bh, bl, ch, cl, dh, dl) {
+  var lo = al + bl + cl + dl;
+  return lo >>> 0;
+}
+utils$a.sum64_4_lo = sum64_4_lo$1;
+function sum64_5_hi$1(ah, al, bh, bl, ch, cl, dh, dl, eh, el) {
+  var carry = 0;
+  var lo = al;
+  lo = lo + bl >>> 0;
+  carry += lo < al ? 1 : 0;
+  lo = lo + cl >>> 0;
+  carry += lo < cl ? 1 : 0;
+  lo = lo + dl >>> 0;
+  carry += lo < dl ? 1 : 0;
+  lo = lo + el >>> 0;
+  carry += lo < el ? 1 : 0;
+  var hi = ah + bh + ch + dh + eh + carry;
+  return hi >>> 0;
+}
+utils$a.sum64_5_hi = sum64_5_hi$1;
+function sum64_5_lo$1(ah, al, bh, bl, ch, cl, dh, dl, eh, el) {
+  var lo = al + bl + cl + dl + el;
+  return lo >>> 0;
+}
+utils$a.sum64_5_lo = sum64_5_lo$1;
+function rotr64_hi$1(ah, al, num) {
+  var r = al << 32 - num | ah >>> num;
+  return r >>> 0;
+}
+utils$a.rotr64_hi = rotr64_hi$1;
+function rotr64_lo$1(ah, al, num) {
+  var r = ah << 32 - num | al >>> num;
+  return r >>> 0;
+}
+utils$a.rotr64_lo = rotr64_lo$1;
+function shr64_hi$1(ah, al, num) {
+  return ah >>> num;
+}
+utils$a.shr64_hi = shr64_hi$1;
+function shr64_lo$1(ah, al, num) {
+  var r = ah << 32 - num | al >>> num;
+  return r >>> 0;
+}
+utils$a.shr64_lo = shr64_lo$1;
+
+var common$5 = {};
+
+var utils$9 = utils$a;
+var assert$3 = minimalisticAssert;
+function BlockHash$4() {
+  this.pending = null;
+  this.pendingTotal = 0;
+  this.blockSize = this.constructor.blockSize;
+  this.outSize = this.constructor.outSize;
+  this.hmacStrength = this.constructor.hmacStrength;
+  this.padLength = this.constructor.padLength / 8;
+  this.endian = 'big';
+  this._delta8 = this.blockSize / 8;
+  this._delta32 = this.blockSize / 32;
+}
+common$5.BlockHash = BlockHash$4;
+BlockHash$4.prototype.update = function update(msg, enc) {
+  // Convert message to array, pad it, and join into 32bit blocks
+  msg = utils$9.toArray(msg, enc);
+  if (!this.pending) this.pending = msg;else this.pending = this.pending.concat(msg);
+  this.pendingTotal += msg.length;
+
+  // Enough data, try updating
+  if (this.pending.length >= this._delta8) {
+    msg = this.pending;
+
+    // Process pending data in blocks
+    var r = msg.length % this._delta8;
+    this.pending = msg.slice(msg.length - r, msg.length);
+    if (this.pending.length === 0) this.pending = null;
+    msg = utils$9.join32(msg, 0, msg.length - r, this.endian);
+    for (var i = 0; i < msg.length; i += this._delta32) this._update(msg, i, i + this._delta32);
+  }
+  return this;
+};
+BlockHash$4.prototype.digest = function digest(enc) {
+  this.update(this._pad());
+  assert$3(this.pending === null);
+  return this._digest(enc);
+};
+BlockHash$4.prototype._pad = function pad() {
+  var len = this.pendingTotal;
+  var bytes = this._delta8;
+  var k = bytes - (len + this.padLength) % bytes;
+  var res = new Array(k + this.padLength);
+  res[0] = 0x80;
+  for (var i = 1; i < k; i++) res[i] = 0;
+
+  // Append length
+  len <<= 3;
+  if (this.endian === 'big') {
+    for (var t = 8; t < this.padLength; t++) res[i++] = 0;
+    res[i++] = 0;
+    res[i++] = 0;
+    res[i++] = 0;
+    res[i++] = 0;
+    res[i++] = len >>> 24 & 0xff;
+    res[i++] = len >>> 16 & 0xff;
+    res[i++] = len >>> 8 & 0xff;
+    res[i++] = len & 0xff;
+  } else {
+    res[i++] = len & 0xff;
+    res[i++] = len >>> 8 & 0xff;
+    res[i++] = len >>> 16 & 0xff;
+    res[i++] = len >>> 24 & 0xff;
+    res[i++] = 0;
+    res[i++] = 0;
+    res[i++] = 0;
+    res[i++] = 0;
+    for (t = 8; t < this.padLength; t++) res[i++] = 0;
+  }
+  return res;
+};
+
+var sha$2 = {};
+
+var common$4 = {};
+
+var utils$8 = utils$a;
+var rotr32 = utils$8.rotr32;
+function ft_1$1(s, x, y, z) {
+  if (s === 0) return ch32$1(x, y, z);
+  if (s === 1 || s === 3) return p32(x, y, z);
+  if (s === 2) return maj32$1(x, y, z);
+}
+common$4.ft_1 = ft_1$1;
+function ch32$1(x, y, z) {
+  return x & y ^ ~x & z;
+}
+common$4.ch32 = ch32$1;
+function maj32$1(x, y, z) {
+  return x & y ^ x & z ^ y & z;
+}
+common$4.maj32 = maj32$1;
+function p32(x, y, z) {
+  return x ^ y ^ z;
+}
+common$4.p32 = p32;
+function s0_256$1(x) {
+  return rotr32(x, 2) ^ rotr32(x, 13) ^ rotr32(x, 22);
+}
+common$4.s0_256 = s0_256$1;
+function s1_256$1(x) {
+  return rotr32(x, 6) ^ rotr32(x, 11) ^ rotr32(x, 25);
+}
+common$4.s1_256 = s1_256$1;
+function g0_256$1(x) {
+  return rotr32(x, 7) ^ rotr32(x, 18) ^ x >>> 3;
+}
+common$4.g0_256 = g0_256$1;
+function g1_256$1(x) {
+  return rotr32(x, 17) ^ rotr32(x, 19) ^ x >>> 10;
+}
+common$4.g1_256 = g1_256$1;
+
+var utils$7 = utils$a;
+var common$3 = common$5;
+var shaCommon$1 = common$4;
+var rotl32$1 = utils$7.rotl32;
+var sum32$2 = utils$7.sum32;
+var sum32_5$1 = utils$7.sum32_5;
+var ft_1 = shaCommon$1.ft_1;
+var BlockHash$3 = common$3.BlockHash;
+var sha1_K = [0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6];
+function SHA1() {
+  if (!(this instanceof SHA1)) return new SHA1();
+  BlockHash$3.call(this);
+  this.h = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+  this.W = new Array(80);
+}
+utils$7.inherits(SHA1, BlockHash$3);
+var _1 = SHA1;
+SHA1.blockSize = 512;
+SHA1.outSize = 160;
+SHA1.hmacStrength = 80;
+SHA1.padLength = 64;
+SHA1.prototype._update = function _update(msg, start) {
+  var W = this.W;
+  for (var i = 0; i < 16; i++) W[i] = msg[start + i];
+  for (; i < W.length; i++) W[i] = rotl32$1(W[i - 3] ^ W[i - 8] ^ W[i - 14] ^ W[i - 16], 1);
+  var a = this.h[0];
+  var b = this.h[1];
+  var c = this.h[2];
+  var d = this.h[3];
+  var e = this.h[4];
+  for (i = 0; i < W.length; i++) {
+    var s = ~~(i / 20);
+    var t = sum32_5$1(rotl32$1(a, 5), ft_1(s, b, c, d), e, W[i], sha1_K[s]);
+    e = d;
+    d = c;
+    c = rotl32$1(b, 30);
+    b = a;
+    a = t;
+  }
+  this.h[0] = sum32$2(this.h[0], a);
+  this.h[1] = sum32$2(this.h[1], b);
+  this.h[2] = sum32$2(this.h[2], c);
+  this.h[3] = sum32$2(this.h[3], d);
+  this.h[4] = sum32$2(this.h[4], e);
+};
+SHA1.prototype._digest = function digest(enc) {
+  if (enc === 'hex') return utils$7.toHex32(this.h, 'big');else return utils$7.split32(this.h, 'big');
+};
+
+var utils$6 = utils$a;
+var common$2 = common$5;
+var shaCommon = common$4;
+var assert$2 = minimalisticAssert;
+var sum32$1 = utils$6.sum32;
+var sum32_4$1 = utils$6.sum32_4;
+var sum32_5 = utils$6.sum32_5;
+var ch32 = shaCommon.ch32;
+var maj32 = shaCommon.maj32;
+var s0_256 = shaCommon.s0_256;
+var s1_256 = shaCommon.s1_256;
+var g0_256 = shaCommon.g0_256;
+var g1_256 = shaCommon.g1_256;
+var BlockHash$2 = common$2.BlockHash;
+var sha256_K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+function SHA256$1() {
+  if (!(this instanceof SHA256$1)) return new SHA256$1();
+  BlockHash$2.call(this);
+  this.h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  this.k = sha256_K;
+  this.W = new Array(64);
+}
+utils$6.inherits(SHA256$1, BlockHash$2);
+var _256 = SHA256$1;
+SHA256$1.blockSize = 512;
+SHA256$1.outSize = 256;
+SHA256$1.hmacStrength = 192;
+SHA256$1.padLength = 64;
+SHA256$1.prototype._update = function _update(msg, start) {
+  var W = this.W;
+  for (var i = 0; i < 16; i++) W[i] = msg[start + i];
+  for (; i < W.length; i++) W[i] = sum32_4$1(g1_256(W[i - 2]), W[i - 7], g0_256(W[i - 15]), W[i - 16]);
+  var a = this.h[0];
+  var b = this.h[1];
+  var c = this.h[2];
+  var d = this.h[3];
+  var e = this.h[4];
+  var f = this.h[5];
+  var g = this.h[6];
+  var h = this.h[7];
+  assert$2(this.k.length === W.length);
+  for (i = 0; i < W.length; i++) {
+    var T1 = sum32_5(h, s1_256(e), ch32(e, f, g), this.k[i], W[i]);
+    var T2 = sum32$1(s0_256(a), maj32(a, b, c));
+    h = g;
+    g = f;
+    f = e;
+    e = sum32$1(d, T1);
+    d = c;
+    c = b;
+    b = a;
+    a = sum32$1(T1, T2);
+  }
+  this.h[0] = sum32$1(this.h[0], a);
+  this.h[1] = sum32$1(this.h[1], b);
+  this.h[2] = sum32$1(this.h[2], c);
+  this.h[3] = sum32$1(this.h[3], d);
+  this.h[4] = sum32$1(this.h[4], e);
+  this.h[5] = sum32$1(this.h[5], f);
+  this.h[6] = sum32$1(this.h[6], g);
+  this.h[7] = sum32$1(this.h[7], h);
+};
+SHA256$1.prototype._digest = function digest(enc) {
+  if (enc === 'hex') return utils$6.toHex32(this.h, 'big');else return utils$6.split32(this.h, 'big');
+};
+
+var utils$5 = utils$a;
+var SHA256 = _256;
+function SHA224() {
+  if (!(this instanceof SHA224)) return new SHA224();
+  SHA256.call(this);
+  this.h = [0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939, 0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4];
+}
+utils$5.inherits(SHA224, SHA256);
+var _224 = SHA224;
+SHA224.blockSize = 512;
+SHA224.outSize = 224;
+SHA224.hmacStrength = 192;
+SHA224.padLength = 64;
+SHA224.prototype._digest = function digest(enc) {
+  // Just truncate output
+  if (enc === 'hex') return utils$5.toHex32(this.h.slice(0, 7), 'big');else return utils$5.split32(this.h.slice(0, 7), 'big');
+};
+
+var utils$4 = utils$a;
+var common$1 = common$5;
+var assert$1 = minimalisticAssert;
+var rotr64_hi = utils$4.rotr64_hi;
+var rotr64_lo = utils$4.rotr64_lo;
+var shr64_hi = utils$4.shr64_hi;
+var shr64_lo = utils$4.shr64_lo;
+var sum64 = utils$4.sum64;
+var sum64_hi = utils$4.sum64_hi;
+var sum64_lo = utils$4.sum64_lo;
+var sum64_4_hi = utils$4.sum64_4_hi;
+var sum64_4_lo = utils$4.sum64_4_lo;
+var sum64_5_hi = utils$4.sum64_5_hi;
+var sum64_5_lo = utils$4.sum64_5_lo;
+var BlockHash$1 = common$1.BlockHash;
+var sha512_K = [0x428a2f98, 0xd728ae22, 0x71374491, 0x23ef65cd, 0xb5c0fbcf, 0xec4d3b2f, 0xe9b5dba5, 0x8189dbbc, 0x3956c25b, 0xf348b538, 0x59f111f1, 0xb605d019, 0x923f82a4, 0xaf194f9b, 0xab1c5ed5, 0xda6d8118, 0xd807aa98, 0xa3030242, 0x12835b01, 0x45706fbe, 0x243185be, 0x4ee4b28c, 0x550c7dc3, 0xd5ffb4e2, 0x72be5d74, 0xf27b896f, 0x80deb1fe, 0x3b1696b1, 0x9bdc06a7, 0x25c71235, 0xc19bf174, 0xcf692694, 0xe49b69c1, 0x9ef14ad2, 0xefbe4786, 0x384f25e3, 0x0fc19dc6, 0x8b8cd5b5, 0x240ca1cc, 0x77ac9c65, 0x2de92c6f, 0x592b0275, 0x4a7484aa, 0x6ea6e483, 0x5cb0a9dc, 0xbd41fbd4, 0x76f988da, 0x831153b5, 0x983e5152, 0xee66dfab, 0xa831c66d, 0x2db43210, 0xb00327c8, 0x98fb213f, 0xbf597fc7, 0xbeef0ee4, 0xc6e00bf3, 0x3da88fc2, 0xd5a79147, 0x930aa725, 0x06ca6351, 0xe003826f, 0x14292967, 0x0a0e6e70, 0x27b70a85, 0x46d22ffc, 0x2e1b2138, 0x5c26c926, 0x4d2c6dfc, 0x5ac42aed, 0x53380d13, 0x9d95b3df, 0x650a7354, 0x8baf63de, 0x766a0abb, 0x3c77b2a8, 0x81c2c92e, 0x47edaee6, 0x92722c85, 0x1482353b, 0xa2bfe8a1, 0x4cf10364, 0xa81a664b, 0xbc423001, 0xc24b8b70, 0xd0f89791, 0xc76c51a3, 0x0654be30, 0xd192e819, 0xd6ef5218, 0xd6990624, 0x5565a910, 0xf40e3585, 0x5771202a, 0x106aa070, 0x32bbd1b8, 0x19a4c116, 0xb8d2d0c8, 0x1e376c08, 0x5141ab53, 0x2748774c, 0xdf8eeb99, 0x34b0bcb5, 0xe19b48a8, 0x391c0cb3, 0xc5c95a63, 0x4ed8aa4a, 0xe3418acb, 0x5b9cca4f, 0x7763e373, 0x682e6ff3, 0xd6b2b8a3, 0x748f82ee, 0x5defb2fc, 0x78a5636f, 0x43172f60, 0x84c87814, 0xa1f0ab72, 0x8cc70208, 0x1a6439ec, 0x90befffa, 0x23631e28, 0xa4506ceb, 0xde82bde9, 0xbef9a3f7, 0xb2c67915, 0xc67178f2, 0xe372532b, 0xca273ece, 0xea26619c, 0xd186b8c7, 0x21c0c207, 0xeada7dd6, 0xcde0eb1e, 0xf57d4f7f, 0xee6ed178, 0x06f067aa, 0x72176fba, 0x0a637dc5, 0xa2c898a6, 0x113f9804, 0xbef90dae, 0x1b710b35, 0x131c471b, 0x28db77f5, 0x23047d84, 0x32caab7b, 0x40c72493, 0x3c9ebe0a, 0x15c9bebc, 0x431d67c4, 0x9c100d4c, 0x4cc5d4be, 0xcb3e42b6, 0x597f299c, 0xfc657e2a, 0x5fcb6fab, 0x3ad6faec, 0x6c44198c, 0x4a475817];
+function SHA512$2() {
+  if (!(this instanceof SHA512$2)) return new SHA512$2();
+  BlockHash$1.call(this);
+  this.h = [0x6a09e667, 0xf3bcc908, 0xbb67ae85, 0x84caa73b, 0x3c6ef372, 0xfe94f82b, 0xa54ff53a, 0x5f1d36f1, 0x510e527f, 0xade682d1, 0x9b05688c, 0x2b3e6c1f, 0x1f83d9ab, 0xfb41bd6b, 0x5be0cd19, 0x137e2179];
+  this.k = sha512_K;
+  this.W = new Array(160);
+}
+utils$4.inherits(SHA512$2, BlockHash$1);
+var _512 = SHA512$2;
+SHA512$2.blockSize = 1024;
+SHA512$2.outSize = 512;
+SHA512$2.hmacStrength = 192;
+SHA512$2.padLength = 128;
+SHA512$2.prototype._prepareBlock = function _prepareBlock(msg, start) {
+  var W = this.W;
+
+  // 32 x 32bit words
+  for (var i = 0; i < 32; i++) W[i] = msg[start + i];
+  for (; i < W.length; i += 2) {
+    var c0_hi = g1_512_hi(W[i - 4], W[i - 3]); // i - 2
+    var c0_lo = g1_512_lo(W[i - 4], W[i - 3]);
+    var c1_hi = W[i - 14]; // i - 7
+    var c1_lo = W[i - 13];
+    var c2_hi = g0_512_hi(W[i - 30], W[i - 29]); // i - 15
+    var c2_lo = g0_512_lo(W[i - 30], W[i - 29]);
+    var c3_hi = W[i - 32]; // i - 16
+    var c3_lo = W[i - 31];
+    W[i] = sum64_4_hi(c0_hi, c0_lo, c1_hi, c1_lo, c2_hi, c2_lo, c3_hi, c3_lo);
+    W[i + 1] = sum64_4_lo(c0_hi, c0_lo, c1_hi, c1_lo, c2_hi, c2_lo, c3_hi, c3_lo);
+  }
+};
+SHA512$2.prototype._update = function _update(msg, start) {
+  this._prepareBlock(msg, start);
+  var W = this.W;
+  var ah = this.h[0];
+  var al = this.h[1];
+  var bh = this.h[2];
+  var bl = this.h[3];
+  var ch = this.h[4];
+  var cl = this.h[5];
+  var dh = this.h[6];
+  var dl = this.h[7];
+  var eh = this.h[8];
+  var el = this.h[9];
+  var fh = this.h[10];
+  var fl = this.h[11];
+  var gh = this.h[12];
+  var gl = this.h[13];
+  var hh = this.h[14];
+  var hl = this.h[15];
+  assert$1(this.k.length === W.length);
+  for (var i = 0; i < W.length; i += 2) {
+    var c0_hi = hh;
+    var c0_lo = hl;
+    var c1_hi = s1_512_hi(eh, el);
+    var c1_lo = s1_512_lo(eh, el);
+    var c2_hi = ch64_hi(eh, el, fh, fl, gh);
+    var c2_lo = ch64_lo(eh, el, fh, fl, gh, gl);
+    var c3_hi = this.k[i];
+    var c3_lo = this.k[i + 1];
+    var c4_hi = W[i];
+    var c4_lo = W[i + 1];
+    var T1_hi = sum64_5_hi(c0_hi, c0_lo, c1_hi, c1_lo, c2_hi, c2_lo, c3_hi, c3_lo, c4_hi, c4_lo);
+    var T1_lo = sum64_5_lo(c0_hi, c0_lo, c1_hi, c1_lo, c2_hi, c2_lo, c3_hi, c3_lo, c4_hi, c4_lo);
+    c0_hi = s0_512_hi(ah, al);
+    c0_lo = s0_512_lo(ah, al);
+    c1_hi = maj64_hi(ah, al, bh, bl, ch);
+    c1_lo = maj64_lo(ah, al, bh, bl, ch, cl);
+    var T2_hi = sum64_hi(c0_hi, c0_lo, c1_hi, c1_lo);
+    var T2_lo = sum64_lo(c0_hi, c0_lo, c1_hi, c1_lo);
+    hh = gh;
+    hl = gl;
+    gh = fh;
+    gl = fl;
+    fh = eh;
+    fl = el;
+    eh = sum64_hi(dh, dl, T1_hi, T1_lo);
+    el = sum64_lo(dl, dl, T1_hi, T1_lo);
+    dh = ch;
+    dl = cl;
+    ch = bh;
+    cl = bl;
+    bh = ah;
+    bl = al;
+    ah = sum64_hi(T1_hi, T1_lo, T2_hi, T2_lo);
+    al = sum64_lo(T1_hi, T1_lo, T2_hi, T2_lo);
+  }
+  sum64(this.h, 0, ah, al);
+  sum64(this.h, 2, bh, bl);
+  sum64(this.h, 4, ch, cl);
+  sum64(this.h, 6, dh, dl);
+  sum64(this.h, 8, eh, el);
+  sum64(this.h, 10, fh, fl);
+  sum64(this.h, 12, gh, gl);
+  sum64(this.h, 14, hh, hl);
+};
+SHA512$2.prototype._digest = function digest(enc) {
+  if (enc === 'hex') return utils$4.toHex32(this.h, 'big');else return utils$4.split32(this.h, 'big');
+};
+function ch64_hi(xh, xl, yh, yl, zh) {
+  var r = xh & yh ^ ~xh & zh;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function ch64_lo(xh, xl, yh, yl, zh, zl) {
+  var r = xl & yl ^ ~xl & zl;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function maj64_hi(xh, xl, yh, yl, zh) {
+  var r = xh & yh ^ xh & zh ^ yh & zh;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function maj64_lo(xh, xl, yh, yl, zh, zl) {
+  var r = xl & yl ^ xl & zl ^ yl & zl;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function s0_512_hi(xh, xl) {
+  var c0_hi = rotr64_hi(xh, xl, 28);
+  var c1_hi = rotr64_hi(xl, xh, 2); // 34
+  var c2_hi = rotr64_hi(xl, xh, 7); // 39
+
+  var r = c0_hi ^ c1_hi ^ c2_hi;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function s0_512_lo(xh, xl) {
+  var c0_lo = rotr64_lo(xh, xl, 28);
+  var c1_lo = rotr64_lo(xl, xh, 2); // 34
+  var c2_lo = rotr64_lo(xl, xh, 7); // 39
+
+  var r = c0_lo ^ c1_lo ^ c2_lo;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function s1_512_hi(xh, xl) {
+  var c0_hi = rotr64_hi(xh, xl, 14);
+  var c1_hi = rotr64_hi(xh, xl, 18);
+  var c2_hi = rotr64_hi(xl, xh, 9); // 41
+
+  var r = c0_hi ^ c1_hi ^ c2_hi;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function s1_512_lo(xh, xl) {
+  var c0_lo = rotr64_lo(xh, xl, 14);
+  var c1_lo = rotr64_lo(xh, xl, 18);
+  var c2_lo = rotr64_lo(xl, xh, 9); // 41
+
+  var r = c0_lo ^ c1_lo ^ c2_lo;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function g0_512_hi(xh, xl) {
+  var c0_hi = rotr64_hi(xh, xl, 1);
+  var c1_hi = rotr64_hi(xh, xl, 8);
+  var c2_hi = shr64_hi(xh, xl, 7);
+  var r = c0_hi ^ c1_hi ^ c2_hi;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function g0_512_lo(xh, xl) {
+  var c0_lo = rotr64_lo(xh, xl, 1);
+  var c1_lo = rotr64_lo(xh, xl, 8);
+  var c2_lo = shr64_lo(xh, xl, 7);
+  var r = c0_lo ^ c1_lo ^ c2_lo;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function g1_512_hi(xh, xl) {
+  var c0_hi = rotr64_hi(xh, xl, 19);
+  var c1_hi = rotr64_hi(xl, xh, 29); // 61
+  var c2_hi = shr64_hi(xh, xl, 6);
+  var r = c0_hi ^ c1_hi ^ c2_hi;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+function g1_512_lo(xh, xl) {
+  var c0_lo = rotr64_lo(xh, xl, 19);
+  var c1_lo = rotr64_lo(xl, xh, 29); // 61
+  var c2_lo = shr64_lo(xh, xl, 6);
+  var r = c0_lo ^ c1_lo ^ c2_lo;
+  if (r < 0) r += 0x100000000;
+  return r;
+}
+
+var utils$3 = utils$a;
+var SHA512$1 = _512;
+function SHA384() {
+  if (!(this instanceof SHA384)) return new SHA384();
+  SHA512$1.call(this);
+  this.h = [0xcbbb9d5d, 0xc1059ed8, 0x629a292a, 0x367cd507, 0x9159015a, 0x3070dd17, 0x152fecd8, 0xf70e5939, 0x67332667, 0xffc00b31, 0x8eb44a87, 0x68581511, 0xdb0c2e0d, 0x64f98fa7, 0x47b5481d, 0xbefa4fa4];
+}
+utils$3.inherits(SHA384, SHA512$1);
+var _384 = SHA384;
+SHA384.blockSize = 1024;
+SHA384.outSize = 384;
+SHA384.hmacStrength = 192;
+SHA384.padLength = 128;
+SHA384.prototype._digest = function digest(enc) {
+  if (enc === 'hex') return utils$3.toHex32(this.h.slice(0, 12), 'big');else return utils$3.split32(this.h.slice(0, 12), 'big');
+};
+
+sha$2.sha1 = _1;
+sha$2.sha224 = _224;
+sha$2.sha256 = _256;
+sha$2.sha384 = _384;
+sha$2.sha512 = _512;
+
+var ripemd = {};
+
+var utils$2 = utils$a;
+var common = common$5;
+var rotl32 = utils$2.rotl32;
+var sum32 = utils$2.sum32;
+var sum32_3 = utils$2.sum32_3;
+var sum32_4 = utils$2.sum32_4;
+var BlockHash = common.BlockHash;
+function RIPEMD160$2() {
+  if (!(this instanceof RIPEMD160$2)) return new RIPEMD160$2();
+  BlockHash.call(this);
+  this.h = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+  this.endian = 'little';
+}
+utils$2.inherits(RIPEMD160$2, BlockHash);
+ripemd.ripemd160 = RIPEMD160$2;
+RIPEMD160$2.blockSize = 512;
+RIPEMD160$2.outSize = 160;
+RIPEMD160$2.hmacStrength = 192;
+RIPEMD160$2.padLength = 64;
+RIPEMD160$2.prototype._update = function update(msg, start) {
+  var A = this.h[0];
+  var B = this.h[1];
+  var C = this.h[2];
+  var D = this.h[3];
+  var E = this.h[4];
+  var Ah = A;
+  var Bh = B;
+  var Ch = C;
+  var Dh = D;
+  var Eh = E;
+  for (var j = 0; j < 80; j++) {
+    var T = sum32(rotl32(sum32_4(A, f(j, B, C, D), msg[r[j] + start], K$4(j)), s[j]), E);
+    A = E;
+    E = D;
+    D = rotl32(C, 10);
+    C = B;
+    B = T;
+    T = sum32(rotl32(sum32_4(Ah, f(79 - j, Bh, Ch, Dh), msg[rh[j] + start], Kh(j)), sh[j]), Eh);
+    Ah = Eh;
+    Eh = Dh;
+    Dh = rotl32(Ch, 10);
+    Ch = Bh;
+    Bh = T;
+  }
+  T = sum32_3(this.h[1], C, Dh);
+  this.h[1] = sum32_3(this.h[2], D, Eh);
+  this.h[2] = sum32_3(this.h[3], E, Ah);
+  this.h[3] = sum32_3(this.h[4], A, Bh);
+  this.h[4] = sum32_3(this.h[0], B, Ch);
+  this.h[0] = T;
+};
+RIPEMD160$2.prototype._digest = function digest(enc) {
+  if (enc === 'hex') return utils$2.toHex32(this.h, 'little');else return utils$2.split32(this.h, 'little');
+};
+function f(j, x, y, z) {
+  if (j <= 15) return x ^ y ^ z;else if (j <= 31) return x & y | ~x & z;else if (j <= 47) return (x | ~y) ^ z;else if (j <= 63) return x & z | y & ~z;else return x ^ (y | ~z);
+}
+function K$4(j) {
+  if (j <= 15) return 0x00000000;else if (j <= 31) return 0x5a827999;else if (j <= 47) return 0x6ed9eba1;else if (j <= 63) return 0x8f1bbcdc;else return 0xa953fd4e;
+}
+function Kh(j) {
+  if (j <= 15) return 0x50a28be6;else if (j <= 31) return 0x5c4dd124;else if (j <= 47) return 0x6d703ef3;else if (j <= 63) return 0x7a6d76e9;else return 0x00000000;
+}
+var r = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 7, 4, 13, 1, 10, 6, 15, 3, 12, 0, 9, 5, 2, 14, 11, 8, 3, 10, 14, 4, 9, 15, 8, 1, 2, 7, 0, 6, 13, 11, 5, 12, 1, 9, 11, 10, 0, 8, 12, 4, 13, 3, 7, 15, 14, 5, 6, 2, 4, 0, 5, 9, 7, 12, 2, 10, 14, 1, 3, 8, 11, 6, 15, 13];
+var rh = [5, 14, 7, 0, 9, 2, 11, 4, 13, 6, 15, 8, 1, 10, 3, 12, 6, 11, 3, 7, 0, 13, 5, 10, 14, 15, 8, 12, 4, 9, 1, 2, 15, 5, 1, 3, 7, 14, 6, 9, 11, 8, 12, 2, 10, 0, 4, 13, 8, 6, 4, 1, 3, 11, 15, 0, 5, 12, 2, 13, 9, 7, 10, 14, 12, 15, 10, 4, 1, 5, 8, 7, 6, 2, 13, 14, 0, 3, 9, 11];
+var s = [11, 14, 15, 12, 5, 8, 7, 9, 11, 13, 14, 15, 6, 7, 9, 8, 7, 6, 8, 13, 11, 9, 7, 15, 7, 12, 15, 9, 11, 7, 13, 12, 11, 13, 6, 7, 14, 9, 13, 15, 14, 8, 13, 6, 5, 12, 7, 5, 11, 12, 14, 15, 14, 15, 9, 8, 9, 14, 5, 6, 8, 6, 5, 12, 9, 15, 5, 11, 6, 8, 13, 12, 5, 12, 13, 14, 11, 8, 5, 6];
+var sh = [8, 9, 9, 11, 13, 15, 15, 5, 7, 7, 8, 11, 14, 14, 12, 6, 9, 13, 15, 7, 12, 8, 9, 11, 7, 7, 12, 7, 6, 15, 13, 11, 9, 7, 15, 11, 8, 6, 6, 14, 12, 13, 5, 14, 13, 13, 7, 5, 15, 5, 8, 11, 14, 14, 6, 14, 6, 9, 12, 9, 12, 5, 15, 8, 8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11];
+
+var utils$1 = utils$a;
+var assert = minimalisticAssert;
+function Hmac(hash, key, enc) {
+  if (!(this instanceof Hmac)) return new Hmac(hash, key, enc);
+  this.Hash = hash;
+  this.blockSize = hash.blockSize / 8;
+  this.outSize = hash.outSize / 8;
+  this.inner = null;
+  this.outer = null;
+  this._init(utils$1.toArray(key, enc));
+}
+var hmac = Hmac;
+Hmac.prototype._init = function init(key) {
+  // Shorten key, if needed
+  if (key.length > this.blockSize) key = new this.Hash().update(key).digest();
+  assert(key.length <= this.blockSize);
+
+  // Add padding to key
+  for (var i = key.length; i < this.blockSize; i++) key.push(0);
+  for (i = 0; i < key.length; i++) key[i] ^= 0x36;
+  this.inner = new this.Hash().update(key);
+
+  // 0x36 ^ 0x5c = 0x6a
+  for (i = 0; i < key.length; i++) key[i] ^= 0x6a;
+  this.outer = new this.Hash().update(key);
+};
+Hmac.prototype.update = function update(msg, enc) {
+  this.inner.update(msg, enc);
+  return this;
+};
+Hmac.prototype.digest = function digest(enc) {
+  this.outer.update(this.inner.digest());
+  return this.outer.digest(enc);
+};
+
+(function (exports) {
+  var hash = exports;
+  hash.utils = utils$a;
+  hash.common = common$5;
+  hash.sha = sha$2;
+  hash.ripemd = ripemd;
+  hash.hmac = hmac;
+
+  // Proxy hash functions to the main object
+  hash.sha1 = hash.sha.sha1;
+  hash.sha256 = hash.sha.sha256;
+  hash.sha224 = hash.sha.sha224;
+  hash.sha384 = hash.sha.sha384;
+  hash.sha512 = hash.sha.sha512;
+  hash.ripemd160 = hash.ripemd.ripemd160;
+})(hash$2);
+var hash$1 = /*@__PURE__*/getDefaultExportFromCjs(hash$2);
+
+// TODO: Replace with libauth
+function sha512$1(payload) {
+  return Uint8Array.from(hash$1.sha512().update(payload).digest());
+}
+function sha256$1(payload) {
+  return Uint8Array.from(hash$1.sha256().update(payload).digest());
+}
+function ripemd160$1(payload) {
+  return Uint8Array.from(hash$1.ripemd160().update(payload).digest());
+}
+function hash160(payload) {
+  return ripemd160$1(sha256$1(payload));
+}
+function hash256(payload) {
+  return sha256$1(sha256$1(payload));
+}
+
+var OptimisationsEquivFile = "\n# This file can be run with CashProof to prove that the optimisations preserve exact functionality\n# This includes most of CashScript's bytecode optimisations, although some are incompatible with CashProof\n\n# Hardcoded arithmetic\n# OP_NOT OP_IF                         <=> OP_NOTIF;\nOP_1 OP_ADD                            <=> OP_1ADD;\nOP_1 OP_SUB                            <=> OP_1SUB;\nOP_1 OP_NEGATE                         <=> OP_1NEGATE;\nOP_0 OP_NUMEQUAL OP_NOT                <=> OP_0NOTEQUAL;\nOP_NUMEQUAL OP_NOT                     <=> OP_NUMNOTEQUAL;\nOP_SHA256 OP_SHA256                    <=> OP_HASH256;\nOP_SHA256 OP_RIPEMD160                 <=> OP_HASH160;\n\n# Hardcoded stack ops\nOP_2 OP_PICK OP_1 OP_PICK OP_3 OP_PICK <=> OP_3DUP OP_SWAP;\nOP_2 OP_PICK OP_2 OP_PICK OP_2 OP_PICK <=> OP_3DUP;\n\nOP_0 OP_PICK OP_2 OP_PICK              <=> OP_2DUP OP_SWAP;\nOP_2 OP_PICK OP_4 OP_PICK              <=> OP_2OVER OP_SWAP;\nOP_3 OP_PICK OP_3 OP_PICK              <=> OP_2OVER;\n\nOP_2 OP_ROLL OP_3 OP_ROLL              <=> OP_2SWAP OP_SWAP;\nOP_3 OP_ROLL OP_3 OP_ROLL              <=> OP_2SWAP;\nOP_4 OP_ROLL OP_5 OP_ROLL              <=> OP_2ROT OP_SWAP;\nOP_5 OP_ROLL OP_5 OP_ROLL              <=> OP_2ROT;\n\nOP_0 OP_PICK                           <=> OP_DUP;\nOP_1 OP_PICK                           <=> OP_OVER;\nOP_0 OP_ROLL                           <=> ;\nOP_1 OP_ROLL                           <=> OP_SWAP;\nOP_2 OP_ROLL                           <=> OP_ROT;\nOP_DROP OP_DROP                        <=> OP_2DROP;\n\n# Secondary effects\nOP_DUP OP_SWAP                         <=> OP_DUP;\nOP_SWAP OP_SWAP                        <=> ;\nOP_2SWAP OP_2SWAP                      <=> ;\nOP_ROT OP_ROT OP_ROT                   <=> ;\nOP_2ROT OP_2ROT OP_2ROT                <=> ;\nOP_OVER OP_OVER                        <=> OP_2DUP;\nOP_DUP OP_DROP                         <=> ;\nOP_DUP OP_NIP                          <=> ;\n\n# Enabling secondary effects\nOP_DUP OP_OVER                         <=> OP_DUP OP_DUP;\n\n# Merge OP_VERIFY\nOP_EQUAL OP_VERIFY                     <=> OP_EQUALVERIFY;\nOP_NUMEQUAL OP_VERIFY                  <=> OP_NUMEQUALVERIFY;\nOP_CHECKSIG OP_VERIFY                  <=> OP_CHECKSIGVERIFY;\n# OP_CHECKMULTISIG OP_VERIFY           <=> OP_CHECKMULTISIGVERIFY;\nOP_CHECKDATASIG OP_VERIFY              <=> OP_CHECKDATASIGVERIFY;\n\n# Remove/replace extraneous OP_SWAP\n# OP_SWAP OP_AND                         <=> OP_AND;\n# OP_SWAP OP_OR                          <=> OP_OR;\n# OP_SWAP OP_XOR                         <=> OP_XOR;\nOP_SWAP OP_ADD                         <=> OP_ADD;\nOP_SWAP OP_EQUAL                       <=> OP_EQUAL;\nOP_SWAP OP_NUMEQUAL                    <=> OP_NUMEQUAL;\nOP_SWAP OP_NUMNOTEQUAL                 <=> OP_NUMNOTEQUAL;\nOP_SWAP OP_GREATERTHANOREQUAL          <=> OP_LESSTHANOREQUAL;\nOP_SWAP OP_LESSTHANOREQUAL             <=> OP_GREATERTHANOREQUAL;\nOP_SWAP OP_GREATERTHAN                 <=> OP_LESSTHAN;\nOP_SWAP OP_LESSTHAN                    <=> OP_GREATERTHAN;\nOP_SWAP OP_DROP                        <=> OP_NIP;\nOP_SWAP OP_NIP                         <=> OP_DROP;\n\n# Remove/replace extraneous OP_DUP\n# OP_DUP OP_AND                         <=> ;\n# OP_DUP OP_OR                          <=> ;\nOP_DUP OP_DROP                        <=> ;\nOP_DUP OP_NIP                         <=> ;\n\n# Random optimisations (don't know what I'm targeting with this)\nOP_2DUP OP_DROP                        <=> OP_OVER;\nOP_2DUP OP_NIP                         <=> OP_DUP;\nOP_CAT OP_DROP                         <=> OP_2DROP;\nOP_NIP OP_DROP                         <=> OP_2DROP;\n\n# Far-fetched stuff\nOP_DUP OP_ROT OP_SWAP OP_DROP          <=> OP_SWAP;\nOP_OVER OP_ROT OP_SWAP OP_DROP         <=> OP_SWAP;\nOP_2 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_3 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_4 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_5 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_6 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_7 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_8 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_9 OP_PICK OP_ROT OP_SWAP OP_DROP    <=> OP_SWAP;\nOP_10 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\nOP_11 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\nOP_12 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\nOP_13 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\nOP_14 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\nOP_15 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\nOP_16 OP_PICK OP_ROT OP_SWAP OP_DROP   <=> OP_SWAP;\n\nOP_DUP OP_ROT OP_DROP                  <=> OP_NIP OP_DUP;\nOP_OVER OP_ROT OP_DROP                 <=> OP_SWAP;\nOP_2 OP_PICK OP_ROT OP_DROP            <=> OP_NIP OP_OVER;\n\nOP_0 OP_NIP                            <=> OP_DROP OP_0;\nOP_1 OP_NIP                            <=> OP_DROP OP_1;\nOP_2 OP_NIP                            <=> OP_DROP OP_2;\nOP_3 OP_NIP                            <=> OP_DROP OP_3;\nOP_4 OP_NIP                            <=> OP_DROP OP_4;\nOP_5 OP_NIP                            <=> OP_DROP OP_5;\nOP_6 OP_NIP                            <=> OP_DROP OP_6;\nOP_7 OP_NIP                            <=> OP_DROP OP_7;\nOP_8 OP_NIP                            <=> OP_DROP OP_8;\nOP_9 OP_NIP                            <=> OP_DROP OP_9;\nOP_10 OP_NIP                           <=> OP_DROP OP_10;\nOP_11 OP_NIP                           <=> OP_DROP OP_11;\nOP_12 OP_NIP                           <=> OP_DROP OP_12;\nOP_13 OP_NIP                           <=> OP_DROP OP_13;\nOP_14 OP_NIP                           <=> OP_DROP OP_14;\nOP_15 OP_NIP                           <=> OP_DROP OP_15;\nOP_16 OP_NIP                           <=> OP_DROP OP_16;\n\nOP_2 OP_PICK OP_SWAP OP_2 OP_PICK OP_NIP <=> OP_DROP OP_2DUP;\n";
+
+var Op = OpcodesBCH;
+function scriptToAsm(script) {
+  return bytecodeToAsm(scriptToBytecode(script));
+}
+function asmToScript(asm) {
+  return bytecodeToScript(asmToBytecode(asm));
+}
+function scriptToBytecode(script) {
+  // Convert the script elements to AuthenticationInstructions
+  var instructions = script.map(function (opOrData) {
+    if (typeof opOrData === 'number') {
+      return {
+        opcode: opOrData
+      };
+    }
+    return decodeAuthenticationInstructions(encodeDataPush(opOrData))[0];
+  });
+  // Convert the AuthenticationInstructions to bytecode
+  return encodeAuthenticationInstructions(instructions);
+}
+function bytecodeToScript(bytecode) {
+  // Convert the bytecode to AuthenticationInstructions
+  var instructions = decodeAuthenticationInstructions(bytecode);
+  // Convert the AuthenticationInstructions to script elements
+  var script = instructions.map(function (instruction) {
+    return 'data' in instruction ? instruction.data : instruction.opcode;
+  });
+  return script;
+}
+function asmToBytecode(asm) {
+  // Remove any duplicate whitespace
+  asm = asm.replace(/\s+/g, ' ').trim();
+  // Convert the ASM tokens to AuthenticationInstructions
+  var instructions = asm.split(' ').map(function (token) {
+    if (token.startsWith('OP_')) {
+      return {
+        opcode: Op[token]
+      };
+    }
+    return decodeAuthenticationInstructions(encodeDataPush(hexToBin(token)))[0];
+  });
+  // Convert the AuthenticationInstructions to bytecode
+  return encodeAuthenticationInstructions(instructions);
+}
+function bytecodeToAsm(bytecode) {
+  // Convert the bytecode to libauth's ASM format
+  var asm = disassembleBytecodeBCH(bytecode);
+  // COnvert libauth's ASM format to BITBOX's
+  asm = asm.replace(/OP_PUSHBYTES_[^\s]+/g, '');
+  asm = asm.replace(/OP_PUSHDATA[^\s]+ [^\s]+/g, '');
+  asm = asm.replace(/(^|\s)0x/g, ' ');
+  // Remove any duplicate whitespace
+  asm = asm.replace(/\s+/g, ' ').trim();
+  return asm;
+}
+function countOpcodes(script) {
+  return script.filter(function (opOrData) {
+    return typeof opOrData === 'number';
+  }).filter(function (op) {
+    return op > Op.OP_16;
+  }).length;
+}
+function calculateBytesize(script) {
+  return scriptToBytecode(script).byteLength;
+}
+// For encoding OP_RETURN data (doesn't require BIP62.3 / MINIMALDATA)
+function encodeNullDataScript$1(chunks) {
+  return flattenBinArray(chunks.map(function (chunk) {
+    if (typeof chunk === 'number') {
+      return new Uint8Array([chunk]);
+    }
+    var pushdataOpcode = getPushDataOpcode$1(chunk);
+    return new Uint8Array([].concat(_toConsumableArray(pushdataOpcode), _toConsumableArray(chunk)));
+  }));
+}
+function getPushDataOpcode$1(data) {
+  var byteLength = data.byteLength;
+  if (byteLength === 0) return Uint8Array.from([0x4c, 0x00]);
+  if (byteLength < 76) return Uint8Array.from([byteLength]);
+  if (byteLength < 256) return Uint8Array.from([0x4c, byteLength]);
+  throw Error('Pushdata too large');
+}
+/**
+ * When cutting out the tx.bytecode preimage variable, the compiler does not know
+ * the size of the final redeem scrip yet, because the constructor parameters still
+ * need to get added. Because of this it does not know whether the VarInt is 1 or 3
+ * bytes. During compilation, an OP_NOP is added at the spot where the bytecode is
+ * cut out. This function replaces that OP_NOP and adds either 1 or 3 to the cut to
+ * additionally cut off the VarInt.
+ *
+ * @param script incomplete redeem script
+ * @returns completed redeem script
+ */
+function replaceBytecodeNop(script) {
+  var index = script.findIndex(function (op) {
+    return op === Op.OP_NOP;
+  });
+  if (index < 0) return script;
+  // Remove the OP_NOP
+  script.splice(index, 1);
+  // Retrieve size of current OP_SPLIT
+  var oldCut = script[index];
+  if (oldCut instanceof Uint8Array) {
+    oldCut = Number(decodeInt(oldCut));
+  } else if (oldCut === Op.OP_0) {
+    oldCut = 0;
+  } else if (oldCut >= Op.OP_1 && oldCut <= Op.OP_16) {
+    oldCut -= 80;
+  } else {
+    return script;
+  }
+  // Update the old OP_SPLIT by adding either 1 or 3 to it
+  script[index] = encodeInt(BigInt(oldCut + 1));
+  var bytecodeSize = calculateBytesize(script);
+  if (bytecodeSize > 252) {
+    script[index] = encodeInt(BigInt(oldCut + 3));
+  }
+  // Minimally encode
+  return asmToScript(scriptToAsm(script));
+}
+function generateRedeemScript(baseScript, encodedArgs) {
+  return replaceBytecodeNop([].concat(_toConsumableArray(encodedArgs), _toConsumableArray(baseScript)));
+}
+function optimiseBytecode(script) {
+  var runs = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1000;
+  var optimisations = OptimisationsEquivFile
+  // Split by line and filter all line comments (#)
+  .split('\n').map(function (equiv) {
+    return equiv.trim();
+  }).filter(function (equiv) {
+    return !equiv.startsWith('#');
+  })
+  // Join back the lines, and split on semicolon
+  .join('').split(';')
+  // Parse all optimisations in .equiv file
+  .map(function (equiv) {
+    return equiv.trim();
+  }).map(function (equiv) {
+    return equiv.split('<=>').map(function (part) {
+      return part.trim();
+    });
+  }).filter(function (equiv) {
+    return equiv.length === 2;
+  });
+  for (var i = 0; i < runs; i += 1) {
+    var oldScript = script;
+    script = replaceOps(script, optimisations);
+    // Break on fixed point
+    if (scriptToAsm(oldScript) === scriptToAsm(script)) break;
+  }
+  return script;
+}
+function replaceOps(script, optimisations) {
+  var asm = scriptToAsm(script);
+  // Apply all optimisations in the cashproof file
+  optimisations.forEach(function (_ref) {
+    var _ref2 = _slicedToArray(_ref, 2),
+      pattern = _ref2[0],
+      replacement = _ref2[1];
+    asm = asm.replace(new RegExp(pattern, 'g'), replacement);
+  });
+  // Add optimisations that are not compatible with CashProof
+  // CashProof can't prove OP_IF without parameters
+  asm = asm.replace(/OP_NOT OP_IF/g, 'OP_NOTIF');
+  // CashProof can't prove OP_CHECKMULTISIG without specifying N
+  asm = asm.replace(/OP_CHECKMULTISIG OP_VERIFY/g, 'OP_CHECKMULTISIGVERIFY');
+  // CashProof can't prove bitwise operators
+  asm = asm.replace(/OP_SWAP OP_AND/g, 'OP_AND');
+  asm = asm.replace(/OP_SWAP OP_OR/g, 'OP_OR');
+  asm = asm.replace(/OP_SWAP OP_XOR/g, 'OP_XOR');
+  asm = asm.replace(/OP_DUP OP_AND/g, '');
+  asm = asm.replace(/OP_DUP OP_OR/g, '');
+  // Remove any double spaces as a result of opcode removal
+  asm = asm.replace(/\s+/g, ' ').trim();
+  return asmToScript(asm);
+}
+
+var _ExplicitlyCastableTo;
+var ArrayType = /*#__PURE__*/function () {
+  function ArrayType(elementType, bound) {
+    _classCallCheck(this, ArrayType);
+    this.elementType = elementType;
+    this.bound = bound;
+  }
+  _createClass(ArrayType, [{
+    key: "toString",
+    value: function toString() {
+      var _this$bound;
+      return "".concat(this.elementType, "[").concat((_this$bound = this.bound) !== null && _this$bound !== void 0 ? _this$bound : '', "]");
+    }
+  }]);
+  return ArrayType;
+}();
+var BytesType = /*#__PURE__*/function () {
+  function BytesType(bound) {
+    _classCallCheck(this, BytesType);
+    this.bound = bound;
+  }
+  _createClass(BytesType, [{
+    key: "toString",
+    value: function toString() {
+      var _this$bound2;
+      return "bytes".concat((_this$bound2 = this.bound) !== null && _this$bound2 !== void 0 ? _this$bound2 : '');
+    }
+  }], [{
+    key: "fromString",
+    value: function fromString(str) {
+      var bound = str === 'byte' ? 1 : Number.parseInt(str.substring(5), 10) || undefined;
+      return new BytesType(bound);
+    }
+  }]);
+  return BytesType;
+}();
+var TupleType = /*#__PURE__*/function () {
+  function TupleType(elementType) {
+    _classCallCheck(this, TupleType);
+    this.elementType = elementType;
+  }
+  _createClass(TupleType, [{
+    key: "toString",
+    value: function toString() {
+      return "(".concat(this.elementType, ", ").concat(this.elementType, ")");
+    }
+  }]);
+  return TupleType;
+}();
+var PrimitiveType;
+(function (PrimitiveType) {
+  PrimitiveType["INT"] = "int";
+  PrimitiveType["BOOL"] = "bool";
+  PrimitiveType["STRING"] = "string";
+  // ADDRESS = 'address',
+  PrimitiveType["PUBKEY"] = "pubkey";
+  PrimitiveType["SIG"] = "sig";
+  PrimitiveType["DATASIG"] = "datasig";
+  PrimitiveType["ANY"] = "any";
+})(PrimitiveType || (PrimitiveType = {}));
+var ExplicitlyCastableTo = (_ExplicitlyCastableTo = {}, _defineProperty(_ExplicitlyCastableTo, PrimitiveType.INT, [PrimitiveType.INT, PrimitiveType.BOOL]), _defineProperty(_ExplicitlyCastableTo, PrimitiveType.BOOL, [PrimitiveType.BOOL, PrimitiveType.INT]), _defineProperty(_ExplicitlyCastableTo, PrimitiveType.STRING, [PrimitiveType.STRING]), _defineProperty(_ExplicitlyCastableTo, PrimitiveType.PUBKEY, [PrimitiveType.PUBKEY]), _defineProperty(_ExplicitlyCastableTo, PrimitiveType.SIG, [PrimitiveType.SIG]), _defineProperty(_ExplicitlyCastableTo, PrimitiveType.DATASIG, [PrimitiveType.DATASIG]), _defineProperty(_ExplicitlyCastableTo, PrimitiveType.ANY, []), _ExplicitlyCastableTo);
+function explicitlyCastable(from, to) {
+  if (!from || !to) return false;
+  // Tuples can't be cast
+  if (from instanceof TupleType || to instanceof TupleType) return false;
+  // Arrays can be cast if their elements can be cast (don't think this is actually used ever)
+  if (from instanceof ArrayType && to instanceof ArrayType) {
+    return explicitlyCastable(from.elementType, to.elementType);
+  }
+  // Can't cast between Array and non-Array
+  if (from instanceof ArrayType || to instanceof ArrayType) return false;
+  if (to instanceof BytesType) {
+    // Can't cast bool to bytes
+    if (from === PrimitiveType.BOOL) return false;
+    // Can cast int to any size bytes
+    if (from === PrimitiveType.INT) return true;
+    // Can freely cast to unbounded bytes
+    if (!to.bound) return true;
+    if (from instanceof BytesType) {
+      // Can freely cast from unbounded bytes
+      if (!from.bound) return true;
+      // Can only cast bounded bytes to bounded bytes if bounds are equal
+      return from.bound === to.bound;
+    }
+    // Cannot cast other primitive types directly to bounded bytes types
+    return false;
+  }
+  if (from instanceof BytesType) {
+    // Can cast unbounded bytes or <=4 bytes to int
+    if (to === PrimitiveType.INT) return !from.bound || from.bound <= 8;
+    // Can't cast bytes to bool or string
+    if (to === PrimitiveType.BOOL) return false;
+    if (to === PrimitiveType.STRING) return false;
+    // Can cast any bytes to pubkey, sig, datasig
+    if (to === PrimitiveType.PUBKEY) return true;
+    if (to === PrimitiveType.SIG) return true;
+    if (to === PrimitiveType.DATASIG) return true;
+    return true;
+  }
+  return ExplicitlyCastableTo[from].includes(to);
+}
+function implicitlyCastable(actual, expected) {
+  if (!actual || !expected) return false;
+  // Tuples can't be cast
+  if (actual instanceof TupleType || expected instanceof TupleType) return false;
+  // Arrays can be cast if their elements can be cast (don't think this is actually used ever)
+  if (actual instanceof ArrayType && expected instanceof ArrayType) {
+    return implicitlyCastable(actual.elementType, expected.elementType);
+  }
+  // Can't cast between Array and non-Array
+  if (actual instanceof ArrayType || expected instanceof ArrayType) return false;
+  // Anything can be implicitly cast to ANY
+  if (expected === PrimitiveType.ANY) return true;
+  if (expected instanceof BytesType) {
+    // Can't implicitly cast bool, int, string to bytes
+    if (actual === PrimitiveType.BOOL) return false;
+    if (actual === PrimitiveType.INT) return false;
+    if (actual === PrimitiveType.STRING) return false;
+    // Can freely cast to unbounded bytes
+    if (!expected.bound) return true;
+    if (actual instanceof BytesType) {
+      // Cannot implicitly cast from unbounded bytes
+      if (!actual.bound) return false;
+      // Can only cast bounded bytes to bounded bytes if bounds are equal
+      return actual.bound === expected.bound;
+    }
+    // Cannot cast other primitive types directly to bounded bytes types
+    return false;
+  }
+  // Other primitive types can only be implicitly cast to themselves
+  return actual === expected;
+}
+function resultingType(left, right) {
+  if (implicitlyCastable(left, right)) return right;
+  if (implicitlyCastable(right, left)) return left;
+  if (left instanceof BytesType && right instanceof BytesType) {
+    return new BytesType();
+  }
+  return undefined;
+}
+function arrayType(types) {
+  if (types.length === 0) return undefined;
+  var resType = types[0];
+  types.forEach(function (t) {
+    resType = resultingType(resType, t);
+  });
+  return resType;
+}
+function implicitlyCastableSignature(actual, expected) {
+  if (actual.length !== expected.length) return false;
+  return expected.every(function (t, i) {
+    return implicitlyCastable(actual[i], t);
+  });
+}
+function parseType(str) {
+  if (str.startsWith('byte')) return BytesType.fromString(str);
+  return PrimitiveType[str.toUpperCase()];
+}
+function isPrimitive$1(type) {
+  return !!PrimitiveType[type.toString().toUpperCase()];
+}
+
+var dist = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  importArtifact: importArtifact,
+  exportArtifact: exportArtifact,
+  encodeBool: encodeBool,
+  decodeBool: decodeBool,
+  encodeInt: encodeInt,
+  decodeInt: decodeInt,
+  encodeString: encodeString,
+  decodeString: decodeString,
+  placeholder: placeholder,
+  sha512: sha512$1,
+  sha256: sha256$1,
+  ripemd160: ripemd160$1,
+  hash160: hash160,
+  hash256: hash256,
+  Op: Op,
+  scriptToAsm: scriptToAsm,
+  asmToScript: asmToScript,
+  scriptToBytecode: scriptToBytecode,
+  bytecodeToScript: bytecodeToScript,
+  asmToBytecode: asmToBytecode,
+  bytecodeToAsm: bytecodeToAsm,
+  countOpcodes: countOpcodes,
+  calculateBytesize: calculateBytesize,
+  encodeNullDataScript: encodeNullDataScript$1,
+  replaceBytecodeNop: replaceBytecodeNop,
+  generateRedeemScript: generateRedeemScript,
+  optimiseBytecode: optimiseBytecode,
+  ArrayType: ArrayType,
+  BytesType: BytesType,
+  TupleType: TupleType,
+  get PrimitiveType () { return PrimitiveType; },
+  explicitlyCastable: explicitlyCastable,
+  implicitlyCastable: implicitlyCastable,
+  resultingType: resultingType,
+  arrayType: arrayType,
+  implicitlyCastableSignature: implicitlyCastableSignature,
+  parseType: parseType,
+  isPrimitive: isPrimitive$1
+});
+
+var require$$1$1 = /*@__PURE__*/getAugmentedNamespace(dist);
+
+var SignatureAlgorithm;
+(function (SignatureAlgorithm) {
+  SignatureAlgorithm[SignatureAlgorithm["ECDSA"] = 0] = "ECDSA";
+  SignatureAlgorithm[SignatureAlgorithm["SCHNORR"] = 1] = "SCHNORR";
+})(SignatureAlgorithm || (SignatureAlgorithm = {}));
+var HashType;
+(function (HashType) {
+  HashType[HashType["SIGHASH_ALL"] = 1] = "SIGHASH_ALL";
+  HashType[HashType["SIGHASH_NONE"] = 2] = "SIGHASH_NONE";
+  HashType[HashType["SIGHASH_SINGLE"] = 3] = "SIGHASH_SINGLE";
+  HashType[HashType["SIGHASH_UTXOS"] = 32] = "SIGHASH_UTXOS";
+  HashType[HashType["SIGHASH_ANYONECANPAY"] = 128] = "SIGHASH_ANYONECANPAY";
+})(HashType || (HashType = {}));
+// Weird setup to allow both Enum parameters, as well as literal strings
+// https://stackoverflow.com/questions/51433319/typescript-constructor-accept-string-for-enum
+var literal = function literal(l) {
+  return l;
+};
+var Network$1 = {
+  MAINNET: literal('mainnet'),
+  TESTNET3: literal('testnet3'),
+  TESTNET4: literal('testnet4'),
+  CHIPNET: literal('chipnet'),
+  REGTEST: literal('regtest')
+};
+
+var VERSION_SIZE = 4;
+var LOCKTIME_SIZE = 4;
+
+var OutputSatoshisTooSmallError = /*#__PURE__*/function (_Error2) {
+  _inherits(OutputSatoshisTooSmallError, _Error2);
+  var _super2 = _createSuper(OutputSatoshisTooSmallError);
+  function OutputSatoshisTooSmallError(satoshis, minimumAmount) {
+    _classCallCheck(this, OutputSatoshisTooSmallError);
+    return _super2.call(this, "Tried to add an output with ".concat(satoshis, " satoshis, which is less than the required minimum for this output-type (").concat(minimumAmount, ")"));
+  }
+  return _createClass(OutputSatoshisTooSmallError);
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+var TokensToNonTokenAddressError = /*#__PURE__*/function (_Error3) {
+  _inherits(TokensToNonTokenAddressError, _Error3);
+  var _super3 = _createSuper(TokensToNonTokenAddressError);
+  function TokensToNonTokenAddressError(address) {
+    _classCallCheck(this, TokensToNonTokenAddressError);
+    return _super3.call(this, "Tried to send tokens to an address without token support, ".concat(address, "."));
+  }
+  return _createClass(TokensToNonTokenAddressError);
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+var FailedTransactionError = /*#__PURE__*/function (_Error4) {
+  _inherits(FailedTransactionError, _Error4);
+  var _super4 = _createSuper(FailedTransactionError);
+  function FailedTransactionError(reason, meep) {
+    var _this;
+    _classCallCheck(this, FailedTransactionError);
+    _this = _super4.call(this, "Transaction failed with reason: ".concat(reason, "\n").concat(meep));
+    _this.reason = reason;
+    _this.meep = meep;
+    return _this;
+  }
+  return _createClass(FailedTransactionError);
+}( /*#__PURE__*/_wrapNativeSuper(Error));
+var FailedRequireError = /*#__PURE__*/function (_FailedTransactionErr) {
+  _inherits(FailedRequireError, _FailedTransactionErr);
+  var _super5 = _createSuper(FailedRequireError);
+  function FailedRequireError() {
+    _classCallCheck(this, FailedRequireError);
+    return _super5.apply(this, arguments);
+  }
+  return _createClass(FailedRequireError);
+}(FailedTransactionError);
+var FailedTimeCheckError = /*#__PURE__*/function (_FailedTransactionErr2) {
+  _inherits(FailedTimeCheckError, _FailedTransactionErr2);
+  var _super6 = _createSuper(FailedTimeCheckError);
+  function FailedTimeCheckError() {
+    _classCallCheck(this, FailedTimeCheckError);
+    return _super6.apply(this, arguments);
+  }
+  return _createClass(FailedTimeCheckError);
+}(FailedTransactionError);
+var FailedSigCheckError = /*#__PURE__*/function (_FailedTransactionErr3) {
+  _inherits(FailedSigCheckError, _FailedTransactionErr3);
+  var _super7 = _createSuper(FailedSigCheckError);
+  function FailedSigCheckError() {
+    _classCallCheck(this, FailedSigCheckError);
+    return _super7.apply(this, arguments);
+  }
+  return _createClass(FailedSigCheckError);
+}(FailedTransactionError);
+// TODO: Expand these reasons with non-script failures (like tx-mempool-conflict)
+var Reason;
+(function (Reason) {
+  Reason["EVAL_FALSE"] = "Script evaluated without error but finished with a false/empty top stack element";
+  Reason["VERIFY"] = "Script failed an OP_VERIFY operation";
+  Reason["EQUALVERIFY"] = "Script failed an OP_EQUALVERIFY operation";
+  Reason["CHECKMULTISIGVERIFY"] = "Script failed an OP_CHECKMULTISIGVERIFY operation";
+  Reason["CHECKSIGVERIFY"] = "Script failed an OP_CHECKSIGVERIFY operation";
+  Reason["CHECKDATASIGVERIFY"] = "Script failed an OP_CHECKDATASIGVERIFY operation";
+  Reason["NUMEQUALVERIFY"] = "Script failed an OP_NUMEQUALVERIFY operation";
+  Reason["SCRIPT_SIZE"] = "Script is too big";
+  Reason["PUSH_SIZE"] = "Push value size limit exceeded";
+  Reason["OP_COUNT"] = "Operation limit exceeded";
+  Reason["STACK_SIZE"] = "Stack size limit exceeded";
+  Reason["SIG_COUNT"] = "Signature count negative or greater than pubkey count";
+  Reason["PUBKEY_COUNT"] = "Pubkey count negative or limit exceeded";
+  Reason["INVALID_OPERAND_SIZE"] = "Invalid operand size";
+  Reason["INVALID_NUMBER_RANGE"] = "Given operand is not a number within the valid range";
+  Reason["IMPOSSIBLE_ENCODING"] = "The requested encoding is impossible to satisfy";
+  Reason["INVALID_SPLIT_RANGE"] = "Invalid OP_SPLIT range";
+  Reason["INVALID_BIT_COUNT"] = "Invalid number of bit set in OP_CHECKMULTISIG";
+  Reason["BAD_OPCODE"] = "Opcode missing or not understood";
+  Reason["DISABLED_OPCODE"] = "Attempted to use a disabled opcode";
+  Reason["INVALID_STACK_OPERATION"] = "Operation not valid with the current stack size";
+  Reason["INVALID_ALTSTACK_OPERATION"] = "Operation not valid with the current altstack size";
+  Reason["OP_RETURN"] = "OP_RETURN was encountered";
+  Reason["UNBALANCED_CONDITIONAL"] = "Invalid OP_IF construction";
+  Reason["DIV_BY_ZERO"] = "Division by zero error";
+  Reason["MOD_BY_ZERO"] = "Modulo by zero error";
+  Reason["INVALID_BITFIELD_SIZE"] = "Bitfield of unexpected size error";
+  Reason["INVALID_BIT_RANGE"] = "Bitfield's bit out of the expected range";
+  Reason["NEGATIVE_LOCKTIME"] = "Negative locktime";
+  Reason["UNSATISFIED_LOCKTIME"] = "Locktime requirement not satisfied";
+  Reason["SIG_HASHTYPE"] = "Signature hash type missing or not understood";
+  Reason["SIG_DER"] = "Non-canonical DER signature";
+  Reason["MINIMALDATA"] = "Data push larger than necessary";
+  Reason["SIG_PUSHONLY"] = "Only push operators allowed in signature scripts";
+  Reason["SIG_HIGH_S"] = "Non-canonical signature: S value is unnecessarily high";
+  Reason["MINIMALIF"] = "OP_IF/NOTIF argument must be minimal";
+  Reason["SIG_NULLFAIL"] = "Signature must be zero for failed CHECK(MULTI)SIG operation";
+  Reason["SIG_BADLENGTH"] = "Signature cannot be 65 bytes in CHECKMULTISIG";
+  Reason["SIG_NONSCHNORR"] = "Only Schnorr signatures allowed in this operation";
+  Reason["DISCOURAGE_UPGRADABLE_NOPS"] = "NOPx reserved for soft-fork upgrades";
+  Reason["PUBKEYTYPE"] = "Public key is neither compressed or uncompressed";
+  Reason["CLEANSTACK"] = "Script did not clean its stack";
+  Reason["NONCOMPRESSED_PUBKEY"] = "Using non-compressed public key";
+  Reason["ILLEGAL_FORKID"] = "Illegal use of SIGHASH_FORKID";
+  Reason["MUST_USE_FORKID"] = "Signature must use SIGHASH_FORKID";
+  Reason["UNKNOWN"] = "unknown error";
+})(Reason || (Reason = {}));
+
+// ////////// PARAMETER VALIDATION ////////////////////////////////////////////
+function validateRecipient(recipient) {
+  var minimumAmount = calculateDust(recipient);
+  if (recipient.amount < minimumAmount) {
+    throw new OutputSatoshisTooSmallError(recipient.amount, BigInt(minimumAmount));
+  }
+  if (recipient.token) {
+    if (!isTokenAddress(recipient.to)) {
+      throw new TokensToNonTokenAddressError(recipient.to);
+    }
+  }
+}
+function calculateDust(recipient) {
+  var outputSize = getOutputSize(recipient);
+  // Formula used to calculate the minimum allowed output
+  var dustAmount = 444 + outputSize * 3;
+  return dustAmount;
+}
+function getOutputSize(output) {
+  var encodedOutput = encodeOutput(output);
+  return encodedOutput.byteLength;
+}
+function encodeOutput(output) {
+  return encodeTransactionOutput(cashScriptOutputToLibauthOutput(output));
+}
+function cashScriptOutputToLibauthOutput(output) {
+  return {
+    lockingBytecode: typeof output.to === 'string' ? addressToLockScript(output.to) : output.to,
+    valueSatoshis: output.amount,
+    token: output.token && _objectSpread2(_objectSpread2({}, output.token), {}, {
+      category: hexToBin(output.token.category),
+      nft: output.token.nft && _objectSpread2(_objectSpread2({}, output.token.nft), {}, {
+        commitment: hexToBin(output.token.nft.commitment)
+      })
+    })
+  };
+}
+function libauthOutputToCashScriptOutput(output) {
+  return {
+    to: output.lockingBytecode,
+    amount: output.valueSatoshis,
+    token: output.token && _objectSpread2(_objectSpread2({}, output.token), {}, {
+      category: binToHex(output.token.category),
+      nft: output.token.nft && _objectSpread2(_objectSpread2({}, output.token.nft), {}, {
+        commitment: binToHex(output.token.nft.commitment)
+      })
+    })
+  };
+}
+function isTokenAddress(address) {
+  var result = decodeCashAddress$1(address);
+  if (typeof result === 'string') throw new Error(result);
+  var supportsTokens = result.type === 'p2pkhWithTokens' || result.type === 'p2shWithTokens';
+  return supportsTokens;
+}
+// ////////// SIZE CALCULATIONS ///////////////////////////////////////////////
+function getInputSize(inputScript) {
+  var scriptSize = inputScript.byteLength;
+  var varIntSize = scriptSize > 252 ? 3 : 1;
+  return 32 + 4 + varIntSize + scriptSize + 4;
+}
+function getPreimageSize(script) {
+  var scriptSize = script.byteLength;
+  var varIntSize = scriptSize > 252 ? 3 : 1;
+  return 4 + 32 + 32 + 36 + varIntSize + scriptSize + 8 + 4 + 32 + 4 + 4;
+}
+function getTxSizeWithoutInputs(outputs) {
+  // Transaction format:
+  // Version (4 Bytes)
+  // TxIn Count (1 ~ 9B)
+  // For each TxIn:
+  //   Outpoint (36B)
+  //   Script Length (1 ~ 9B)
+  //   ScriptSig(?)
+  //   Sequence (4B)
+  // TxOut Count (1 ~ 9B)
+  // For each TxOut:
+  //   Value (8B)
+  //   Script Length(1 ~ 9B)*
+  //   Script (?)*
+  // LockTime (4B)
+  var size = VERSION_SIZE + LOCKTIME_SIZE;
+  size += outputs.reduce(function (acc, output) {
+    return acc + getOutputSize(output);
+  }, 0);
+  // Add tx-out count (accounting for a potential change output)
+  size += encodeInt(BigInt(outputs.length + 1)).byteLength;
+  return size;
+}
+// ////////// BUILD OBJECTS ///////////////////////////////////////////////////
+function createInputScript(redeemScript, encodedArgs, selector, preimage) {
+  // Create unlock script / redeemScriptSig (add potential preimage and selector)
+  var unlockScript = encodedArgs.reverse();
+  if (preimage !== undefined) unlockScript.push(preimage);
+  if (selector !== undefined) unlockScript.push(encodeInt(BigInt(selector)));
+  // Create input script and compile it to bytecode
+  var inputScript = [].concat(_toConsumableArray(unlockScript), [scriptToBytecode(redeemScript)]);
+  return scriptToBytecode(inputScript);
+}
+function createOpReturnOutput(opReturnData) {
+  var script = [Op.OP_RETURN].concat(_toConsumableArray(opReturnData.map(function (output) {
+    return toBin(output);
+  })));
+  return {
+    to: encodeNullDataScript(script),
+    amount: 0n
+  };
+}
+function toBin(output) {
+  var data = output.replace(/^0x/, '');
+  var encode = data === output ? utf8ToBin : hexToBin;
+  return encode(data);
+}
+function createSighashPreimage(transaction, sourceOutputs, inputIndex, coveredBytecode, hashtype) {
+  var context = {
+    inputIndex: inputIndex,
+    sourceOutputs: sourceOutputs,
+    transaction: transaction
+  };
+  var signingSerializationType = new Uint8Array([hashtype]);
+  var sighashPreimage = generateSigningSerializationBCH(context, {
+    coveredBytecode: coveredBytecode,
+    signingSerializationType: signingSerializationType
+  });
+  return sighashPreimage;
+}
+function buildError(reason, meepStr) {
+  var require = [Reason.EVAL_FALSE, Reason.VERIFY, Reason.EQUALVERIFY, Reason.CHECKMULTISIGVERIFY, Reason.CHECKSIGVERIFY, Reason.CHECKDATASIGVERIFY, Reason.NUMEQUALVERIFY];
+  var timeCheck = [Reason.NEGATIVE_LOCKTIME, Reason.UNSATISFIED_LOCKTIME];
+  var sigCheck = [Reason.SIG_COUNT, Reason.PUBKEY_COUNT, Reason.SIG_HASHTYPE, Reason.SIG_DER, Reason.SIG_HIGH_S, Reason.SIG_NULLFAIL, Reason.SIG_BADLENGTH, Reason.SIG_NONSCHNORR];
+  if (toRegExp(require).test(reason)) {
+    return new FailedRequireError(reason, meepStr);
+  }
+  if (toRegExp(timeCheck).test(reason)) {
+    return new FailedTimeCheckError(reason, meepStr);
+  }
+  if (toRegExp(sigCheck).test(reason)) {
+    return new FailedSigCheckError(reason, meepStr);
+  }
+  return new FailedTransactionError(reason, meepStr);
+}
+function toRegExp(reasons) {
+  return new RegExp(reasons.join('|').replace(/\(/g, '\\(').replace(/\)/g, '\\)'));
+}
+// ////////// MISC ////////////////////////////////////////////////////////////
+function meep(tx, utxos, script) {
+  var scriptPubkey = binToHex(scriptToLockingBytecode(script, 'p2sh20'));
+  return "meep debug --tx=".concat(tx, " --idx=0 --amt=").concat(utxos[0].satoshis, " --pkscript=").concat(scriptPubkey);
+}
+function scriptToAddress(script, network, addressType, tokenSupport) {
+  var lockingBytecode = scriptToLockingBytecode(script, addressType);
+  var prefix = getNetworkPrefix(network);
+  var address = lockingBytecodeToCashAddress(lockingBytecode, prefix, {
+    tokenSupport: tokenSupport
+  });
+  return address;
+}
+function scriptToLockingBytecode(script, addressType) {
+  var scriptBytecode = scriptToBytecode(script);
+  var scriptHash = addressType === 'p2sh20' ? hash160(scriptBytecode) : hash256(scriptBytecode);
+  var addressContents = {
+    payload: scriptHash,
+    type: LockingBytecodeType[addressType]
+  };
+  var lockingBytecode = addressContentsToLockingBytecode(addressContents);
+  return lockingBytecode;
+}
+function publicKeyToP2PKHLockingBytecode(publicKey) {
+  var pubkeyHash = hash160(publicKey);
+  var addressContents = {
+    payload: pubkeyHash,
+    type: LockingBytecodeType.p2pkh
+  };
+  var lockingBytecode = addressContentsToLockingBytecode(addressContents);
+  return lockingBytecode;
+}
+function utxoComparator(a, b) {
+  if (a.satoshis > b.satoshis) return 1;
+  if (a.satoshis < b.satoshis) return -1;
+  return 0;
+}
+function utxoTokenComparator(a, b) {
+  if (!a.token || !b.token) throw new Error('UTXO does not have token data');
+  if (!a.token.category !== !b.token.category) throw new Error('UTXO token categories do not match');
+  if (a.token.amount > b.token.amount) return 1;
+  if (a.token.amount < b.token.amount) return -1;
+  return 0;
+}
+/**
+* Helper function to convert an address to a locking script
+*
+* @param address   Address to convert to locking script
+*
+* @returns a locking script corresponding to the passed address
+*/
+function addressToLockScript(address) {
+  var result = cashAddressToLockingBytecode(address);
+  if (typeof result === 'string') throw new Error(result);
+  return result.bytecode;
+}
+function getNetworkPrefix(network) {
+  switch (network) {
+    case Network$1.MAINNET:
+      return 'bitcoincash';
+    case Network$1.TESTNET4:
+    case Network$1.TESTNET3:
+    case Network$1.CHIPNET:
+      return 'bchtest';
+    case Network$1.REGTEST:
+      return 'bchreg';
+    default:
+      return 'bitcoincash';
+  }
+}
+// ////////////////////////////////////////////////////////////////////////////
+// For encoding OP_RETURN data (doesn't require BIP62.3 / MINIMALDATA)
+function encodeNullDataScript(chunks) {
+  return flattenBinArray(chunks.map(function (chunk) {
+    if (typeof chunk === 'number') {
+      return new Uint8Array([chunk]);
+    }
+    var pushdataOpcode = getPushDataOpcode(chunk);
+    return new Uint8Array([].concat(_toConsumableArray(pushdataOpcode), _toConsumableArray(chunk)));
+  }));
+}
+function getPushDataOpcode(data) {
+  var byteLength = data.byteLength;
+  if (byteLength === 0) return Uint8Array.from([0x4c, 0x00]);
+  if (byteLength < 76) return Uint8Array.from([byteLength]);
+  if (byteLength < 256) return Uint8Array.from([0x4c, byteLength]);
+  throw Error('Pushdata too large');
+}
+
+var utils = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  validateRecipient: validateRecipient,
+  calculateDust: calculateDust,
+  getOutputSize: getOutputSize,
+  encodeOutput: encodeOutput,
+  cashScriptOutputToLibauthOutput: cashScriptOutputToLibauthOutput,
+  libauthOutputToCashScriptOutput: libauthOutputToCashScriptOutput,
+  getInputSize: getInputSize,
+  getPreimageSize: getPreimageSize,
+  getTxSizeWithoutInputs: getTxSizeWithoutInputs,
+  createInputScript: createInputScript,
+  createOpReturnOutput: createOpReturnOutput,
+  createSighashPreimage: createSighashPreimage,
+  buildError: buildError,
+  meep: meep,
+  scriptToAddress: scriptToAddress,
+  scriptToLockingBytecode: scriptToLockingBytecode,
+  publicKeyToP2PKHLockingBytecode: publicKeyToP2PKHLockingBytecode,
+  utxoComparator: utxoComparator,
+  utxoTokenComparator: utxoTokenComparator,
+  addressToLockScript: addressToLockScript,
+  getNetworkPrefix: getNetworkPrefix
+});
+
+var require$$2$1 = /*@__PURE__*/getAugmentedNamespace(utils);
+
+var SignatureTemplate$1 = /*#__PURE__*/function () {
+  function SignatureTemplate(signer) {
+    var hashtype = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : HashType.SIGHASH_ALL | HashType.SIGHASH_UTXOS;
+    var signatureAlgorithm = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : SignatureAlgorithm.SCHNORR;
+    _classCallCheck(this, SignatureTemplate);
+    this.hashtype = hashtype;
+    this.signatureAlgorithm = signatureAlgorithm;
+    if (isKeypair(signer)) {
+      var wif = signer.toWIF();
+      this.privateKey = decodeWif(wif);
+    } else if (typeof signer === 'string') {
+      this.privateKey = decodeWif(signer);
+    } else {
+      this.privateKey = signer;
+    }
+  }
+  _createClass(SignatureTemplate, [{
+    key: "generateSignature",
+    value: function generateSignature(payload, bchForkId) {
+      var signature = this.signatureAlgorithm === SignatureAlgorithm.SCHNORR ? secp256k1.signMessageHashSchnorr(this.privateKey, payload) : secp256k1.signMessageHashDER(this.privateKey, payload);
+      return Uint8Array.from([].concat(_toConsumableArray(signature), [this.getHashType(bchForkId)]));
+    }
+  }, {
+    key: "getHashType",
+    value: function getHashType() {
+      var bchForkId = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+      return bchForkId ? this.hashtype | SigningSerializationFlag.forkId : this.hashtype;
+    }
+  }, {
+    key: "getPublicKey",
+    value: function getPublicKey() {
+      return secp256k1.derivePublicKeyCompressed(this.privateKey);
+    }
+  }]);
+  return SignatureTemplate;
+}();
+function isKeypair(obj) {
+  return typeof obj.toWIF === 'function';
+}
+function decodeWif(wif) {
+  var result = decodePrivateKeyWif(wif);
+  if (typeof result === 'string') {
+    throw new Error(result);
+  }
+  return result.privateKey;
+}
+
+var SignatureTemplate$2 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  'default': SignatureTemplate$1
+});
+
+var require$$3$1 = /*@__PURE__*/getAugmentedNamespace(SignatureTemplate$2);
 
 var safeBuffer = {exports: {}};
 
@@ -38182,11 +39959,14 @@ msgpack_min.exports;
 })(msgpack_min, msgpack_min.exports);
 var msgpack_minExports = msgpack_min.exports;
 
-Object.defineProperty(utils, "__esModule", {
+Object.defineProperty(utils$b, "__esModule", {
   value: true
 });
-var unPack_1 = utils.unPack = pack_1 = utils.pack = signUnsignedTransaction_1 = utils.signUnsignedTransaction = extractOutputs_1 = utils.extractOutputs = deriveCashaddr_1 = utils.deriveCashaddr = wifToPrivateKey_1 = utils.wifToPrivateKey = textToUtf8Hex_1 = utils.textToUtf8Hex = hexSecretToHexPrivkey_1 = utils.hexSecretToHexPrivkey = uint8ArrayToHex_1 = utils.uint8ArrayToHex = cashAddrToLegacy_1 = utils.cashAddrToLegacy = hexToWif_1 = utils.hexToWif = void 0;
+var unPack_1 = utils$b.unPack = pack_1 = utils$b.pack = signUnsignedTransaction_1 = utils$b.signUnsignedTransaction = signTransactionForArg_1 = utils$b.signTransactionForArg = extractOutputs_1 = utils$b.extractOutputs = deriveCashaddr_1 = utils$b.deriveCashaddr = wifToPrivateKey_1 = utils$b.wifToPrivateKey = textToUtf8Hex_1 = utils$b.textToUtf8Hex = hexSecretToHexPrivkey_1 = utils$b.hexSecretToHexPrivkey = uint8ArrayToHex_1 = utils$b.uint8ArrayToHex = cashAddrToLegacy_1 = utils$b.cashAddrToLegacy = hexToWif_1 = utils$b.hexToWif = void 0;
 var libauth_1 = require$$0$2;
+var utils_1 = require$$1$1;
+var utils_js_1 = require$$2$1;
+var SignatureTemplate = require$$3$1;
 var bchaddr = bchaddr$1;
 var wif = wif$1;
 var Buffer_1 = buffer;
@@ -38199,15 +39979,15 @@ function hexToWif(hexStr, network) {
     return wif.encode(239, privateKey, true);
   }
 }
-var hexToWif_1 = utils.hexToWif = hexToWif;
+var hexToWif_1 = utils$b.hexToWif = hexToWif;
 function cashAddrToLegacy(cashAddr) {
   return bchaddr.toLegacyAddress(cashAddr);
 }
-var cashAddrToLegacy_1 = utils.cashAddrToLegacy = cashAddrToLegacy;
+var cashAddrToLegacy_1 = utils$b.cashAddrToLegacy = cashAddrToLegacy;
 function uint8ArrayToHex(arr) {
   return (0, libauth_1.binToHex)(arr);
 }
-var uint8ArrayToHex_1 = utils.uint8ArrayToHex = uint8ArrayToHex;
+var uint8ArrayToHex_1 = utils$b.uint8ArrayToHex = uint8ArrayToHex;
 function hexSecretToHexPrivkey(text) {
   if (!(0, libauth_1.isHex)(text)) {
     throw "Invalid Hex Secret";
@@ -38218,12 +39998,12 @@ function hexSecretToHexPrivkey(text) {
   n = n % m;
   return n.toString(16);
 }
-var hexSecretToHexPrivkey_1 = utils.hexSecretToHexPrivkey = hexSecretToHexPrivkey;
+var hexSecretToHexPrivkey_1 = utils$b.hexSecretToHexPrivkey = hexSecretToHexPrivkey;
 function textToUtf8Hex(text) {
   var encoder = new TextEncoder();
   return (0, libauth_1.binToHex)(encoder.encode(text));
 }
-var textToUtf8Hex_1 = utils.textToUtf8Hex = textToUtf8Hex;
+var textToUtf8Hex_1 = utils$b.textToUtf8Hex = textToUtf8Hex;
 function wifToPrivateKey(secret) {
   var wifResult = (0, libauth_1.decodePrivateKeyWif)(secret);
   if (typeof wifResult === "string") {
@@ -38232,7 +40012,7 @@ function wifToPrivateKey(secret) {
   var resultData = wifResult;
   return resultData.privateKey;
 }
-var wifToPrivateKey_1 = utils.wifToPrivateKey = wifToPrivateKey;
+var wifToPrivateKey_1 = utils$b.wifToPrivateKey = wifToPrivateKey;
 function deriveCashaddr(privateKey, networkPrefix, addrType) {
   var publicKey = libauth_1.secp256k1.derivePublicKeyCompressed(privateKey);
   if (typeof publicKey === "string") {
@@ -38241,7 +40021,7 @@ function deriveCashaddr(privateKey, networkPrefix, addrType) {
   var pkh = (0, libauth_1.hash160)(publicKey);
   return (0, libauth_1.encodeCashAddress)(networkPrefix, addrType, pkh);
 }
-var deriveCashaddr_1 = utils.deriveCashaddr = deriveCashaddr;
+var deriveCashaddr_1 = utils$b.deriveCashaddr = deriveCashaddr;
 function extractOutputs(tx, network) {
   var outputs = [];
   var _iterator = _createForOfIteratorHelper(tx.outputs),
@@ -38267,7 +40047,16 @@ function extractOutputs(tx, network) {
   }
   return outputs;
 }
-var extractOutputs_1 = utils.extractOutputs = extractOutputs;
+var extractOutputs_1 = utils$b.extractOutputs = extractOutputs;
+function signTransactionForArg(decoded, sourceOutputs, i, bytecode, signingKey) {
+  var template = new SignatureTemplate(signingKey);
+  var hashtype = template.getHashType();
+  var preimage = (0, utils_js_1.createSighashPreimage)(decoded, sourceOutputs, i, bytecode, hashtype);
+  var sighash = (0, utils_1.hash256)(preimage);
+  var signature = template.generateSignature(sighash);
+  return signature;
+}
+var signTransactionForArg_1 = utils$b.signTransactionForArg = signTransactionForArg;
 function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
   var template = (0, libauth_1.importAuthenticationTemplate)(libauth_1.authenticationTemplateP2pkhNonHd);
   if (typeof template === "string") {
@@ -38313,11 +40102,11 @@ function signUnsignedTransaction(decoded, sourceOutputs, signingKey) {
   }
   return (0, libauth_1.encodeTransaction)(result.transaction);
 }
-var signUnsignedTransaction_1 = utils.signUnsignedTransaction = signUnsignedTransaction;
+var signUnsignedTransaction_1 = utils$b.signUnsignedTransaction = signUnsignedTransaction;
 function pack(tx) {
   return base64EncodeURL((0, algo_msgpack_with_bigint_1.encode)(tx));
 }
-var pack_1 = utils.pack = pack;
+var pack_1 = utils$b.pack = pack;
 function unPack(tx) {
   var result = (0, algo_msgpack_with_bigint_1.decode)(base64DecodeURL(tx));
   return JSON.parse(JSON.stringify(result), function (key, value) {
@@ -38343,7 +40132,7 @@ function unPack(tx) {
     return value;
   });
 }
-unPack_1 = utils.unPack = unPack;
+unPack_1 = utils$b.unPack = unPack;
 function base64EncodeURL(byteArray) {
   return btoa(Array.from(new Uint8Array(byteArray)).map(function (val) {
     return String.fromCharCode(val);
@@ -38355,4 +40144,4 @@ function base64DecodeURL(b64urlstring) {
   }));
 }
 
-export { cashAddrToLegacy_1 as cashAddrToLegacy, utils as default, deriveCashaddr_1 as deriveCashaddr, extractOutputs_1 as extractOutputs, hexSecretToHexPrivkey_1 as hexSecretToHexPrivkey, hexToWif_1 as hexToWif, pack_1 as pack, signUnsignedTransaction_1 as signUnsignedTransaction, textToUtf8Hex_1 as textToUtf8Hex, uint8ArrayToHex_1 as uint8ArrayToHex, unPack_1 as unPack, wifToPrivateKey_1 as wifToPrivateKey };
+export { cashAddrToLegacy_1 as cashAddrToLegacy, utils$b as default, deriveCashaddr_1 as deriveCashaddr, extractOutputs_1 as extractOutputs, hexSecretToHexPrivkey_1 as hexSecretToHexPrivkey, hexToWif_1 as hexToWif, pack_1 as pack, signTransactionForArg_1 as signTransactionForArg, signUnsignedTransaction_1 as signUnsignedTransaction, textToUtf8Hex_1 as textToUtf8Hex, uint8ArrayToHex_1 as uint8ArrayToHex, unPack_1 as unPack, wifToPrivateKey_1 as wifToPrivateKey };

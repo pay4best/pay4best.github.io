@@ -430,6 +430,20 @@ async function handleMessageAsIframe(e) {
     if(!isPay4Best) {
         return;
     }
+    if(e.data.Pay4BestWalletReq.GetPublicKey) {
+        if(window.WIF) {
+            let _Wallet = Wallet
+            if (window.NETWORK === "bchtest") {
+                _Wallet = TestNetWallet
+            }
+            
+            const wallet = await _Wallet.fromWIF(window.WIF)
+            e.ports[0].postMessage(await wallet.getPublicKey(true));
+        } else {
+            e.ports[0].postMessage("wallet-not-init");
+        }
+        return;
+    }
     if(e.data.Pay4BestWalletReq.GetAddr) {
         if(window.WIF) {
             const privKeyArr = utils.wifToPrivateKey(window.WIF);
@@ -445,6 +459,9 @@ async function handleMessageAsIframe(e) {
     tx.origin = e.origin; // add the origin site
     window.TxMap.set(reqID, tx);
     let targetURL = location.protocol+"//"+location.host+"/?origin="+encodeURI(e.origin)+"&req="+reqID;
+    if(e.data.Pay4BestWalletReq.signForArg) {
+        targetURL += "&signTransactionForArg=true"
+    }
     var newWindow = window.open(targetURL, '', 'width=380,height=700');
     e.ports[0].postMessage({reqID: reqID, ok: newWindow !== null}); //return the reqID and window.open result
 
@@ -473,7 +490,13 @@ async function signTx() {
     const tx = window.Tx;
     if(!tx) return;
     const privKeyArr = utils.wifToPrivateKey(window.WIF);
-    var signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
+    let signedTx
+    if(params.get('signTransactionForArg')){
+        const {transaction, sourceOutputs, inputIndex, bytecode} = tx;
+        signedTx = await utils.signTransactionForArg(transaction, sourceOutputs, inputIndex, bytecode,privKeyArr);
+    }else {
+        signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
+    }
     // var signedTx = tx;
     //console.log("TxRespChannel.postMessage", {ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
     TxRespChannel.postMessage({ReqID: reqID, Result: {signedTx: signedTx, origin: tx.origin}});
@@ -485,11 +508,11 @@ async function handleBroadcastTx() {
     const tx = window.Tx
     var signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
  
-    let _Wallet
+    let wallet
     if (window.NETWORK === "bchtest") {
-         _Wallet = await TestNetWallet.newRandom()
+        wallet = await TestNetWallet.newRandom()
     } else {
-        _Wallet =await Wallet.newRandom();
+        wallet =await Wallet.newRandom();
     }
     try {
         const toHexString = (bytes) => {
@@ -497,7 +520,7 @@ async function handleBroadcastTx() {
             return ('0' + (byte & 0xff).toString(16)).slice(-2);
         }).join('');
         };
-        await _Wallet.submitTransaction(hexToBin(toHexString(signedTx)))
+        await wallet.submitTransaction(hexToBin(toHexString(signedTx)))
         myAlert("Transaction broadcast success")   
     } catch (error) {
         myAlert("error: " + (error.message || error))   
