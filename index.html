@@ -122,7 +122,7 @@ IS WITH YOU.</p>
 </div>
 
 <div id="withGenerateUrl" style="padding: 10px; display: none">
-    <p><b>URL:</b><br> <a id="generatedUrl" onclick="copyText(event.target.text);myAlert('Copy successfully and please open it with chrome');">1321</a></p>
+    <p><b>URL:</b><br> <a id="generatedUrl" onclick="copyText(event.target.text);myAlert('Copy successfully and please open it with chrome');"></a></p>
     <td><canvas id="generatedUrlQR"></canvas></td></tr>
     <p>Please copy the url and open it with chrome</p>
 </div>
@@ -508,11 +508,12 @@ async function handleBroadcastTx() {
     const tx = window.Tx
     var signedTx = await utils.signUnsignedTransaction(tx.transaction, tx.sourceOutputs, privKeyArr);
  
+    const cashAddr = utils.deriveCashaddr(privKeyArr, window.NETWORK, "p2pkh");
     let wallet
     if (window.NETWORK === "bchtest") {
-        wallet = await TestNetWallet.newRandom()
+        wallet = await TestNetWallet.watchOnly(cashAddr)
     } else {
-        wallet =await Wallet.newRandom();
+        wallet =await Wallet.watchOnly(cashAddr)
     }
     try {
         const toHexString = (bytes) => {
