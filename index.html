@@ -454,6 +454,20 @@ async function handleMessageAsIframe(e) {
         }
         return;
     }
+    if(e.data.Pay4BestWalletReq.GetEvmAddr) {
+        try {
+            if(!window.EVMAddress) {
+                const accounts = await window.ethereum.request({method: "eth_requestAccounts"});
+                const addr = accounts[0];
+                window.EVMAddress = addr;
+            }
+            e.ports[0].postMessage(window.EVMAddress);  
+        } catch (error) {
+            console.error("GetEvmAddr error: ", error)
+            e.ports[0].postMessage("GetEvmAddr-error");  
+        }
+        return
+    }
     var tx = e.data.Pay4BestWalletReq.UnsignedTx;
     const reqID = await getObjectHash(tx);
     tx.origin = e.origin; // add the origin site
